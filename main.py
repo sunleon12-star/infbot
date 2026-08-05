@@ -1285,36 +1285,46 @@ async def _run_biz_event(channel):
 
 @tasks.loop(minutes=1)
 async def rp_event_scheduler():
-    if RP_CHANNEL_ID == 0 or not RP_HOURS:
+    if RP_CHANNEL_ID == 0:
         return
     now = datetime.now(TIMEZONE)
     hour, minute = now.hour, now.minute
-    if hour not in RP_HOURS:
-        return
     channel = bot.get_channel(RP_CHANNEL_ID)
     if not channel:
         print(f"❌ RP Channel {RP_CHANNEL_ID} not found!")
         return
+    # Ako event već traje, nastavi ga pratiti čak i ako sat više nije u RP_HOURS
+    # (rješava evente koji prelaze u sljedeći sat, npr. 18:40 → 19:05)
+    if rp_event_active:
+        await _run_rp_event(channel)
+        return
+    if not RP_HOURS or hour not in RP_HOURS:
+        return
     # 5-min reminder before start
     reminder_minute = (RP_START_MINUTE - 5) % 60
-    if minute == reminder_minute and not rp_event_active:
+    if minute == reminder_minute:
         await channel.send("⏳ **RP lista počinje za 5 minuta — budite spremni! 🎭**")
     await _run_rp_event(channel)
 
 @tasks.loop(minutes=1)
 async def biz_event_scheduler():
-    if BIZ_CHANNEL_ID == 0 or not BIZ_HOURS:
+    if BIZ_CHANNEL_ID == 0:
         return
     now = datetime.now(TIMEZONE)
     hour, minute = now.hour, now.minute
-    if hour not in BIZ_HOURS:
-        return
     channel = bot.get_channel(BIZ_CHANNEL_ID)
     if not channel:
         print(f"❌ BIZ Channel {BIZ_CHANNEL_ID} not found!")
         return
+    # Ako event već traje, nastavi ga pratiti čak i ako sat više nije u BIZ_HOURS
+    # (rješava evente koji prelaze u sljedeći sat, npr. 18:40 → 19:05)
+    if biz_event_active:
+        await _run_biz_event(channel)
+        return
+    if not BIZ_HOURS or hour not in BIZ_HOURS:
+        return
     reminder_minute = (BIZ_START_MINUTE - 5) % 60
-    if minute == reminder_minute and not biz_event_active:
+    if minute == reminder_minute:
         await channel.send("⏳ **BIZ lista počinje za 5 minuta — budite spremni! 💼**")
     await _run_biz_event(channel)
 
@@ -3054,7 +3064,16 @@ async def on_ready():
     biz_event_scheduler.start()
     biz_vc_status_refresh.start()
     await bot.tree.sync()
-    print("✅ Slash komande sinkronizirane.")
+    # Guild sync je trenutan — kopira globalne komande na svaki server odmah
+    synced_guilds = 0
+    for guild in bot.guilds:
+        try:
+            bot.tree.copy_global_to(guild=guild)
+            await bot.tree.sync(guild=guild)
+            synced_guilds += 1
+        except Exception as e:
+            print(f"⚠️ Guild sync greška ({guild.name}): {e}")
+    print(f"✅ Slash komande sinkronizirane globalno + na {synced_guilds} server(a) — komande vidljive odmah.")
 
 
 @bot.event
