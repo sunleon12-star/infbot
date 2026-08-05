@@ -48,17 +48,26 @@ DEFAULT_SETTINGS = {
 }
 
 def load_settings():
+    data = DEFAULT_SETTINGS.copy()
+    # Fallback na environment varijable (kompatibilnost sa starim botom)
+    env_channel = os.environ.get('CHANNEL_ID', '0')
+    try:
+        env_cid = int(env_channel)
+        if env_cid != 0:
+            data['CHANNEL_ID'] = env_cid
+    except ValueError:
+        pass
     if os.path.exists(SETTINGS_FILE):
         try:
             with open(SETTINGS_FILE, 'r') as f:
-                data = json.load(f)
-                for key, val in DEFAULT_SETTINGS.items():
-                    if key not in data:
-                        data[key] = val
+                saved = json.load(f)
+                for key in DEFAULT_SETTINGS:
+                    if key in saved:
+                        data[key] = saved[key]
                 return data
         except Exception:
             pass
-    return DEFAULT_SETTINGS.copy()
+    return data
 
 def save_settings():
     data = {
@@ -182,6 +191,18 @@ def _is_admin(guild: discord.Guild, user_id: int) -> bool:
         return False
     member = guild.get_member(user_id)
     return bool(member and member.guild_permissions.administrator)
+
+async def _get_channel(channel_id: int):
+    """Get a channel from cache, falling back to fetch if not cached."""
+    if not channel_id:
+        return None
+    ch = bot.get_channel(channel_id)
+    if ch is None:
+        try:
+            ch = await bot.fetch_channel(channel_id)
+        except Exception as e:
+            print(f"⚠️ fetch_channel({channel_id}) failed: {e}")
+    return ch
 
 async def _disable_event_message():
     """Disable the join/leave buttons on the current event message."""
@@ -560,12 +581,7 @@ class SetupView(discord.ui.View):
         if not self._check_author(interaction):
             await interaction.response.send_message("❌ Samo osoba koja je pokrenula /setup može koristiti ovu formu.", ephemeral=True)
             return
-        channel = bot.get_channel(CHANNEL_ID)
-        if channel is None:
-            await interaction.response.send_message(
-                "❌ Event kanal nije postavljen. Postavi ga prvo u 🔧 konfiguraciji.", ephemeral=True
-            )
-            return
+        channel = bot.get_channel(CHANNEL_ID) or interaction.channel
         if select.values[0] == "on":
             inf_bot_online = True
             await interaction.response.send_message("✅ INF Bot uključen.", ephemeral=True)
@@ -740,7 +756,7 @@ async def event_scheduler():
     # REMINDER 5 MINUTES BEFORE START
     reminder_minute = (START_MINUTE - 5) % 60
     if minute == reminder_minute and not event_active:
-        channel = bot.get_channel(CHANNEL_ID)
+        channel = await _get_channel(CHANNEL_ID)
         if channel:
             await channel.send("⏳ **INF - lista pocinje za 5 minuta.**")
 
@@ -751,9 +767,10 @@ async def event_scheduler():
         current_participants = []
         participant_names.clear()
 
-        channel = bot.get_channel(CHANNEL_ID)
+        channel = await _get_channel(CHANNEL_ID)
         if not channel:
             print(f"❌ Channel {CHANNEL_ID} not found! Check ID and bot permissions.")
+            event_active = False
             return
 
         embed = build_embed()
@@ -769,9 +786,11 @@ async def event_scheduler():
 
     # DRAW AT DRAW_MINUTE
     if minute == DRAW_MINUTE and event_active:
-        channel = bot.get_channel(CHANNEL_ID)
+        channel = await _get_channel(CHANNEL_ID)
 
-        if len(current_participants) == 0:
+        if not channel:
+            print(f"❌ Channel {CHANNEL_ID} not found during draw!")
+        elif len(current_participants) == 0:
             await channel.send("😢 **Nitko nije na listi. Ajmo se aktivirat malo.**")
         else:
             eligible = [uid for uid in current_participants if uid not in BLACKLIST_USERS]
@@ -795,7 +814,7 @@ async def event_scheduler():
         join_button_locked = True
         await update_message()
 
-        channel = bot.get_channel(CHANNEL_ID)
+        channel = await _get_channel(CHANNEL_ID)
         if channel and current_participants:
             guild = channel.guild if channel else None
             name_parts = []
@@ -1295,7 +1314,7 @@ async def rp_event_scheduler():
         return
     now = datetime.now(TIMEZONE)
     hour, minute = now.hour, now.minute
-    channel = bot.get_channel(RP_CHANNEL_ID)
+    channel = await _get_channel(RP_CHANNEL_ID)
     if not channel:
         print(f"❌ RP Channel {RP_CHANNEL_ID} not found!")
         return
@@ -1318,7 +1337,7 @@ async def biz_event_scheduler():
         return
     now = datetime.now(TIMEZONE)
     hour, minute = now.hour, now.minute
-    channel = bot.get_channel(BIZ_CHANNEL_ID)
+    channel = await _get_channel(BIZ_CHANNEL_ID)
     if not channel:
         print(f"❌ BIZ Channel {BIZ_CHANNEL_ID} not found!")
         return
@@ -1928,7 +1947,7 @@ async def force_start_rp(interaction: discord.Interaction):
     rp_join_button_locked = False
     rp_current_participants = []
     rp_participant_names.clear()
-    ch = bot.get_channel(RP_CHANNEL_ID) or interaction.channel
+    ch = await _get_channel(RP_CHANNEL_ID) or interaction.channel
     embed = build_rp_embed()
     view = RPJoinButtonView()
     msg = await ch.send(embed=embed, view=view)
@@ -1983,7 +2002,7 @@ async def force_start_biz(interaction: discord.Interaction):
     biz_join_button_locked = False
     biz_current_participants = []
     biz_participant_names.clear()
-    ch = bot.get_channel(BIZ_CHANNEL_ID) or interaction.channel
+    ch = await _get_channel(BIZ_CHANNEL_ID) or interaction.channel
     embed = build_biz_embed()
     view = BIZJoinButtonView()
     msg = await ch.send(embed=embed, view=view)
@@ -2325,17 +2344,65 @@ async def on_app_command_error(interaction: discord.Interaction, error: app_comm
 @bot.tree.command(name="setup", description="Otvara interaktivni setup wizard za konfiguraciju bota.")
 @app_commands.default_permissions(administrator=True)
 async def setup(interaction: discord.Interaction):
+    cid = interaction.channel.id if interaction.channel else None
+
+    # BIZ kanal → otvori BIZ wizard
+    if cid and cid == BIZ_CHANNEL_ID:
+        ch = bot.get_channel(BIZ_CHANNEL_ID)
+        ch_val = ch.mention if ch else "❌ Nije postavljen"
+        pr = interaction.guild.get_role(BIZ_PRIORITY_ROLE_ID) if BIZ_PRIORITY_ROLE_ID else None
+        pr_val = pr.mention if pr else "*nije postavljen*"
+        mvc = interaction.guild.get_channel(BIZ_MONITOR_VC_ID) if BIZ_MONITOR_VC_ID else None
+        mvc_val = f"**{mvc.name}**" if mvc else "*isključeno*"
+        vc_val = f":{str(BIZ_VC_REMIND_MINUTE).zfill(2)}" if BIZ_VC_REMIND_MINUTE is not None else "*isključen*"
+        hrs_val = ", ".join(f"{h:02d}:XX" for h in sorted(BIZ_HOURS)) if BIZ_HOURS else "*nije postavljeno*"
+        embed = discord.Embed(title="⚙️ BIZ Event — Setup", color=0x2ECC71,
+            description="Detektirano: BIZ kanal. Klikni gumbe ispod za postavljanje BIZ eventa.")
+        embed.add_field(name="📡 Kanal", value=ch_val, inline=True)
+        embed.add_field(name="⏰ Start/kraj", value=f":{str(BIZ_START_MINUTE).zfill(2)} → :{str(BIZ_END_MINUTE).zfill(2)}", inline=True)
+        embed.add_field(name="🎲 Izvlačenje", value=f":{str(BIZ_DRAW_MINUTE).zfill(2)}", inline=True)
+        embed.add_field(name="👥 Max slotova", value=str(BIZ_MAX_SLOTS), inline=True)
+        embed.add_field(name="📅 Sati (2x/dan)", value=hrs_val, inline=True)
+        embed.add_field(name="🎙️ VC podsjetnik", value=vc_val, inline=True)
+        embed.add_field(name="⭐ Priority rola", value=pr_val, inline=True)
+        embed.add_field(name="🎙️ VC lampice", value=mvc_val, inline=True)
+        embed.set_footer(text="Vidljivo samo tebi • Za INF setup koristi /setup u INF kanalu")
+        await interaction.response.send_message(embed=embed, view=BIZSetupView(interaction.guild.id, interaction.user.id), ephemeral=True)
+        return
+
+    # RP kanal → otvori RP wizard
+    if cid and cid == RP_CHANNEL_ID:
+        ch = bot.get_channel(RP_CHANNEL_ID)
+        ch_val = ch.mention if ch else "❌ Nije postavljen"
+        pr = interaction.guild.get_role(RP_PRIORITY_ROLE_ID) if RP_PRIORITY_ROLE_ID else None
+        pr_val = pr.mention if pr else "*nije postavljen*"
+        mvc = interaction.guild.get_channel(RP_MONITOR_VC_ID) if RP_MONITOR_VC_ID else None
+        mvc_val = f"**{mvc.name}**" if mvc else "*isključeno*"
+        vc_val = f":{str(RP_VC_REMIND_MINUTE).zfill(2)}" if RP_VC_REMIND_MINUTE is not None else "*isključen*"
+        hrs_val = ", ".join(f"{h:02d}:XX" for h in sorted(RP_HOURS)) if RP_HOURS else "*nije postavljeno*"
+        embed = discord.Embed(title="⚙️ RP Event — Setup", color=0x3498DB,
+            description="Detektirano: RP kanal. Klikni gumbe ispod za postavljanje RP eventa.")
+        embed.add_field(name="📡 Kanal", value=ch_val, inline=True)
+        embed.add_field(name="⏰ Start/kraj", value=f":{str(RP_START_MINUTE).zfill(2)} → :{str(RP_END_MINUTE).zfill(2)}", inline=True)
+        embed.add_field(name="🎲 Izvlačenje", value=f":{str(RP_DRAW_MINUTE).zfill(2)}", inline=True)
+        embed.add_field(name="👥 Max slotova", value=str(RP_MAX_SLOTS), inline=True)
+        embed.add_field(name="📅 Sati (3x/dan)", value=hrs_val, inline=True)
+        embed.add_field(name="🎙️ VC podsjetnik", value=vc_val, inline=True)
+        embed.add_field(name="⭐ Priority rola", value=pr_val, inline=True)
+        embed.add_field(name="🎙️ VC lampice", value=mvc_val, inline=True)
+        embed.set_footer(text="Vidljivo samo tebi • Za INF setup koristi /setup u INF kanalu")
+        await interaction.response.send_message(embed=embed, view=RPSetupView(interaction.guild.id, interaction.user.id), ephemeral=True)
+        return
+
+    # Sve ostalo → INF wizard
     channel = bot.get_channel(CHANNEL_ID)
     channel_val = channel.mention if channel else "❌ Nije postavljen"
-
     if PRIORITY_ROLE_ID:
         priority_role = interaction.guild.get_role(PRIORITY_ROLE_ID)
         priority_val = priority_role.mention if priority_role else f"ID {PRIORITY_ROLE_ID} *(nije pronađen)*"
     else:
         priority_val = "*nije postavljen*"
-
     vc_val = f":{str(VC_REMIND_MINUTE).zfill(2)}" if VC_REMIND_MINUTE is not None else "*isključen*"
-
     if inf_bot_online is True:
         inf_val = "✅ Uključen"
     elif inf_bot_online is False:
@@ -2347,10 +2414,10 @@ async def setup(interaction: discord.Interaction):
         title="⚙️ INF Bot — Setup",
         description=(
             "**Trenutne postavke** prikazane su ispod.\n"
-            "Klikni **🔧 Postavi konfiguraciju** da otvoriš formu — polja su već popunjena trenutnim vrijednostima, "
-            "samo promijeni što trebaš i potvrdi.\n"
+            "Klikni **🔧 Postavi konfiguraciju** da otvoriš formu.\n"
             "Za priority rolu klikni **⭐ Priority rola**.\n"
-            "INF Bot status postavi dolje u izborniku."
+            "INF Bot status postavi dolje u izborniku.\n\n"
+            "💡 *Za BIZ setup koristi /setup u BIZ kanalu, za RP u RP kanalu.*"
         ),
         color=0xFF5500,
     )
