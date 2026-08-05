@@ -581,7 +581,7 @@ class SetupView(discord.ui.View):
         if not self._check_author(interaction):
             await interaction.response.send_message("❌ Samo osoba koja je pokrenula /setup može koristiti ovu formu.", ephemeral=True)
             return
-        channel = bot.get_channel(CHANNEL_ID) or interaction.channel
+        channel = await _get_channel(CHANNEL_ID) or interaction.channel
         if select.values[0] == "on":
             inf_bot_online = True
             await interaction.response.send_message("✅ INF Bot uključen.", ephemeral=True)
@@ -903,19 +903,23 @@ def build_rp_embed():
     status = "🔓 OPEN" if not rp_join_button_locked else "🔒 LOCKED"
     hours_str = ", ".join(f"{h:02d}:XX" for h in sorted(RP_HOURS)) if RP_HOURS else "*nije postavljeno*"
     embed = discord.Embed(
-        title="🎭 RP lista",
+        title="🎟️ RP Lista — Ulaznice",
         description=(
-            f"**⏰ Trajanje:** :{str(RP_START_MINUTE).zfill(2)} — :{str(RP_END_MINUTE).zfill(2)}\n"
-            f"**📅 Sati:** {hours_str}\n"
-            f"**👥 Prvih {RP_MAX_SLOTS} na listi, priority rola ima prednost**\n"
-            f"**📊 Status:** {status}\n\n"
-            f"**Sudionici ({len(rp_current_participants)}/{RP_MAX_SLOTS}):**\n"
-            f"{participant_text}\n\n"
-            f"*Izvlačenje u :{str(RP_DRAW_MINUTE).zfill(2)}, lista se zatvara u :{str(RP_END_MINUTE).zfill(2)}*"
+            f"🎭 *Roleplay event — prvih {RP_MAX_SLOTS} dobiva ulaznicu!*\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🎟️ **Trajanje:** :{str(RP_START_MINUTE).zfill(2)} — :{str(RP_END_MINUTE).zfill(2)}\n"
+            f"🕐 **Sati:** {hours_str}\n"
+            f"👥 **Mjesta:** {len(rp_current_participants)}/{RP_MAX_SLOTS}  |  ⭐ priority rola ima prednost\n"
+            f"📊 **Status:** {status}\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"**🎪 Sudionici:**\n"
+            f"{participant_text}\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🎲 *Izvlačenje u :{str(RP_DRAW_MINUTE).zfill(2)} — lista se zatvara u :{str(RP_END_MINUTE).zfill(2)}*"
         ),
-        color=0x3498DB
+        color=0x9B59B6
     )
-    embed.set_footer(text="Klikni gumb ispod za prijavu!")
+    embed.set_footer(text="🎟️ Klikni gumb ispod i uzmi svoju ulaznicu!")
     return embed
 
 def build_biz_embed():
@@ -946,19 +950,23 @@ def build_biz_embed():
     status = "🔓 OPEN" if not biz_join_button_locked else "🔒 LOCKED"
     hours_str = ", ".join(f"{h:02d}:XX" for h in sorted(BIZ_HOURS)) if BIZ_HOURS else "*nije postavljeno*"
     embed = discord.Embed(
-        title="💼 BIZ lista",
+        title="🏢 BIZ Lista — Poslovni Sat",
         description=(
-            f"**⏰ Trajanje:** :{str(BIZ_START_MINUTE).zfill(2)} — :{str(BIZ_END_MINUTE).zfill(2)}\n"
-            f"**📅 Sati:** {hours_str}\n"
-            f"**👥 Prvih {BIZ_MAX_SLOTS} na listi, priority rola ima prednost**\n"
-            f"**📊 Status:** {status}\n\n"
-            f"**Sudionici ({len(biz_current_participants)}/{BIZ_MAX_SLOTS}):**\n"
-            f"{participant_text}\n\n"
-            f"*Izvlačenje u :{str(BIZ_DRAW_MINUTE).zfill(2)}, lista se zatvara u :{str(BIZ_END_MINUTE).zfill(2)}*"
+            f"🏦 *Business event — prvih {BIZ_MAX_SLOTS} dobiva mjesto!*\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🕐 **Trajanje:** :{str(BIZ_START_MINUTE).zfill(2)} — :{str(BIZ_END_MINUTE).zfill(2)}\n"
+            f"🗓️ **Sati:** {hours_str}\n"
+            f"👔 **Mjesta:** {len(biz_current_participants)}/{BIZ_MAX_SLOTS}  |  ⭐ priority rola ima prednost\n"
+            f"📊 **Status:** {status}\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"**🏗️ Sudionici:**\n"
+            f"{participant_text}\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"📈 *Izvlačenje u :{str(BIZ_DRAW_MINUTE).zfill(2)} — lista se zatvara u :{str(BIZ_END_MINUTE).zfill(2)}*"
         ),
-        color=0x2ECC71
+        color=0xF39C12
     )
-    embed.set_footer(text="Klikni gumb ispod za prijavu!")
+    embed.set_footer(text="🏢 Klikni gumb ispod i osiguraj svoje mjesto!")
     return embed
 
 async def update_rp_message():
@@ -2550,8 +2558,7 @@ async def infon(interaction: discord.Interaction):
     global inf_bot_online
     inf_bot_online = True
     await interaction.response.defer(ephemeral=True)
-    channel = bot.get_channel(CHANNEL_ID)
-    target = channel if channel else interaction.channel
+    target = await _get_channel(CHANNEL_ID) or interaction.channel
     await target.send("INF bot uključen budite spremni.")
     await interaction.followup.send("✅ Poruka poslana.", ephemeral=True)
 
@@ -2562,8 +2569,7 @@ async def infof(interaction: discord.Interaction):
     global inf_bot_online
     inf_bot_online = False
     await interaction.response.defer(ephemeral=True)
-    channel = bot.get_channel(CHANNEL_ID)
-    target = channel if channel else interaction.channel
+    target = await _get_channel(CHANNEL_ID) or interaction.channel
     await target.send("Nažalost izgubili smo neformalnu bot neradi dok ne dobijemo neformalnu nazad")
     await interaction.followup.send("✅ Poruka poslana.", ephemeral=True)
 
@@ -2572,8 +2578,7 @@ async def infof(interaction: discord.Interaction):
 @app_commands.default_permissions(administrator=True)
 async def infostatus(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
-    channel = bot.get_channel(CHANNEL_ID)
-    target = channel if channel else interaction.channel
+    target = await _get_channel(CHANNEL_ID) or interaction.channel
     if inf_bot_online is True:
         await target.send("✅ **INF bot status:** Uključen — budite spremni.")
     elif inf_bot_online is False:
