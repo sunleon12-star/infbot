@@ -15,6 +15,7 @@ TOKEN = os.environ.get('DISCORD_TOKEN', '')
 
 SETTINGS_FILE = 'settings.json'
 DEFAULT_SETTINGS = {
+    # INF event
     'CHANNEL_ID': 0,
     'MAX_SLOTS': 10,
     'START_MINUTE': 25,
@@ -23,6 +24,27 @@ DEFAULT_SETTINGS = {
     'PRIORITY_ROLE_ID': None,
     'VC_REMIND_MINUTE': 38,
     'MONITOR_VC_ID': None,
+    # RP event (3x per day)
+    'RP_CHANNEL_ID': 0,
+    'RP_MAX_SLOTS': 10,
+    'RP_START_MINUTE': 25,
+    'RP_DRAW_MINUTE': 30,
+    'RP_END_MINUTE': 40,
+    'RP_PRIORITY_ROLE_ID': None,
+    'RP_VC_REMIND_MINUTE': None,
+    'RP_MONITOR_VC_ID': None,
+    'RP_HOURS': [],
+    'RP_BLOCKS_INF': False,
+    # BIZ event (2x per day)
+    'BIZ_CHANNEL_ID': 0,
+    'BIZ_MAX_SLOTS': 10,
+    'BIZ_START_MINUTE': 25,
+    'BIZ_DRAW_MINUTE': 30,
+    'BIZ_END_MINUTE': 40,
+    'BIZ_PRIORITY_ROLE_ID': None,
+    'BIZ_VC_REMIND_MINUTE': None,
+    'BIZ_MONITOR_VC_ID': None,
+    'BIZ_HOURS': [],
 }
 
 def load_settings():
@@ -40,6 +62,7 @@ def load_settings():
 
 def save_settings():
     data = {
+        # INF
         'CHANNEL_ID': CHANNEL_ID,
         'MAX_SLOTS': MAX_SLOTS,
         'START_MINUTE': START_MINUTE,
@@ -48,11 +71,33 @@ def save_settings():
         'PRIORITY_ROLE_ID': PRIORITY_ROLE_ID,
         'VC_REMIND_MINUTE': VC_REMIND_MINUTE,
         'MONITOR_VC_ID': MONITOR_VC_ID,
+        # RP
+        'RP_CHANNEL_ID': RP_CHANNEL_ID,
+        'RP_MAX_SLOTS': RP_MAX_SLOTS,
+        'RP_START_MINUTE': RP_START_MINUTE,
+        'RP_DRAW_MINUTE': RP_DRAW_MINUTE,
+        'RP_END_MINUTE': RP_END_MINUTE,
+        'RP_PRIORITY_ROLE_ID': RP_PRIORITY_ROLE_ID,
+        'RP_VC_REMIND_MINUTE': RP_VC_REMIND_MINUTE,
+        'RP_MONITOR_VC_ID': RP_MONITOR_VC_ID,
+        'RP_HOURS': RP_HOURS,
+        'RP_BLOCKS_INF': RP_BLOCKS_INF,
+        # BIZ
+        'BIZ_CHANNEL_ID': BIZ_CHANNEL_ID,
+        'BIZ_MAX_SLOTS': BIZ_MAX_SLOTS,
+        'BIZ_START_MINUTE': BIZ_START_MINUTE,
+        'BIZ_DRAW_MINUTE': BIZ_DRAW_MINUTE,
+        'BIZ_END_MINUTE': BIZ_END_MINUTE,
+        'BIZ_PRIORITY_ROLE_ID': BIZ_PRIORITY_ROLE_ID,
+        'BIZ_VC_REMIND_MINUTE': BIZ_VC_REMIND_MINUTE,
+        'BIZ_MONITOR_VC_ID': BIZ_MONITOR_VC_ID,
+        'BIZ_HOURS': BIZ_HOURS,
     }
     with open(SETTINGS_FILE, 'w') as f:
         json.dump(data, f, indent=2)
 
 _s = load_settings()
+# INF settings
 CHANNEL_ID        = _s['CHANNEL_ID']
 MAX_SLOTS         = _s['MAX_SLOTS']
 START_MINUTE      = _s['START_MINUTE']
@@ -61,6 +106,27 @@ END_MINUTE        = _s['END_MINUTE']
 PRIORITY_ROLE_ID  = _s['PRIORITY_ROLE_ID']
 VC_REMIND_MINUTE  = _s['VC_REMIND_MINUTE']
 MONITOR_VC_ID     = _s['MONITOR_VC_ID']
+# RP settings
+RP_CHANNEL_ID       = _s['RP_CHANNEL_ID']
+RP_MAX_SLOTS        = _s['RP_MAX_SLOTS']
+RP_START_MINUTE     = _s['RP_START_MINUTE']
+RP_DRAW_MINUTE      = _s['RP_DRAW_MINUTE']
+RP_END_MINUTE       = _s['RP_END_MINUTE']
+RP_PRIORITY_ROLE_ID = _s['RP_PRIORITY_ROLE_ID']
+RP_VC_REMIND_MINUTE = _s['RP_VC_REMIND_MINUTE']
+RP_MONITOR_VC_ID    = _s['RP_MONITOR_VC_ID']
+RP_HOURS            = _s['RP_HOURS']
+RP_BLOCKS_INF       = _s['RP_BLOCKS_INF']
+# BIZ settings
+BIZ_CHANNEL_ID       = _s['BIZ_CHANNEL_ID']
+BIZ_MAX_SLOTS        = _s['BIZ_MAX_SLOTS']
+BIZ_START_MINUTE     = _s['BIZ_START_MINUTE']
+BIZ_DRAW_MINUTE      = _s['BIZ_DRAW_MINUTE']
+BIZ_END_MINUTE       = _s['BIZ_END_MINUTE']
+BIZ_PRIORITY_ROLE_ID = _s['BIZ_PRIORITY_ROLE_ID']
+BIZ_VC_REMIND_MINUTE = _s['BIZ_VC_REMIND_MINUTE']
+BIZ_MONITOR_VC_ID    = _s['BIZ_MONITOR_VC_ID']
+BIZ_HOURS            = _s['BIZ_HOURS']
 
 BLACKLIST_USERS = set()
 BAN_USERS = set()
@@ -69,16 +135,38 @@ BAN_USERS = set()
 TIMEZONE = pytz.timezone('Europe/Zagreb')
 
 # ==========================================
-# INTERNAL STATE
+# INTERNAL STATE — INF
 # ==========================================
 last_winner_id = None
 winner_history = []
 current_participants = []
-participant_names = {}  # uid -> display_name, populated when user joins
+participant_names = {}
 event_active = False
 join_button_locked = False
 current_event_message = None
 inf_bot_online = None
+
+# ==========================================
+# INTERNAL STATE — RP
+# ==========================================
+rp_last_winner_id = None
+rp_winner_history = []
+rp_current_participants = []
+rp_participant_names = {}
+rp_event_active = False
+rp_join_button_locked = False
+rp_current_event_message = None
+
+# ==========================================
+# INTERNAL STATE — BIZ
+# ==========================================
+biz_last_winner_id = None
+biz_winner_history = []
+biz_current_participants = []
+biz_participant_names = {}
+biz_event_active = False
+biz_join_button_locked = False
+biz_current_event_message = None
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -639,6 +727,10 @@ async def event_scheduler():
     if CHANNEL_ID == 0:
         return
 
+    # RP blokira INF: preskoči ovaj sat ako je RP_BLOCKS_INF uključen i ovaj sat je RP sat
+    if RP_BLOCKS_INF and now.hour in RP_HOURS:
+        return
+
     # REMINDER 5 MINUTES BEFORE START
     reminder_minute = (START_MINUTE - 5) % 60
     if minute == reminder_minute and not event_active:
@@ -721,6 +813,1466 @@ async def event_scheduler():
         await _disable_event_message()
 
         print(f"🏁 Event finished at {now.strftime('%H:%M')}")
+
+
+# ==========================================
+# RP EVENT — HELPERS
+# ==========================================
+def _get_vc_member_ids(guild, vc_id):
+    if not vc_id or not guild:
+        return set()
+    vc = guild.get_channel(vc_id)
+    if vc and isinstance(vc, discord.VoiceChannel):
+        return {m.id for m in vc.members[:40]}
+    return set()
+
+async def _disable_rp_event_message():
+    global rp_current_event_message
+    if rp_current_event_message:
+        try:
+            v = discord.ui.View()
+            v.add_item(discord.ui.Button(label="🔘 Udi na RP listu", style=discord.ButtonStyle.success, disabled=True))
+            v.add_item(discord.ui.Button(label="🚪 Izađi s RP liste", style=discord.ButtonStyle.danger, disabled=True))
+            await rp_current_event_message.edit(view=v)
+        except Exception as e:
+            print(f"⚠️ _disable_rp_event_message: {e}")
+        rp_current_event_message = None
+
+async def _disable_biz_event_message():
+    global biz_current_event_message
+    if biz_current_event_message:
+        try:
+            v = discord.ui.View()
+            v.add_item(discord.ui.Button(label="🔘 Udi na BIZ listu", style=discord.ButtonStyle.success, disabled=True))
+            v.add_item(discord.ui.Button(label="🚪 Izađi s BIZ liste", style=discord.ButtonStyle.danger, disabled=True))
+            await biz_current_event_message.edit(view=v)
+        except Exception as e:
+            print(f"⚠️ _disable_biz_event_message: {e}")
+        biz_current_event_message = None
+
+def build_rp_embed():
+    if not rp_current_participants:
+        participant_text = "🎯 *Nitko se još nije prijavio*"
+    else:
+        channel = bot.get_channel(RP_CHANNEL_ID)
+        guild = channel.guild if channel else None
+        vc_member_ids = _get_vc_member_ids(guild, RP_MONITOR_VC_ID)
+        lines = []
+        for idx, uid in enumerate(rp_current_participants[:RP_MAX_SLOTS], start=1):
+            name = rp_participant_names.get(uid)
+            if name is None:
+                member = guild.get_member(uid) if guild else None
+                name = member.display_name if member else f"<@{uid}>"
+                if name:
+                    rp_participant_names[uid] = name
+            member = guild.get_member(uid) if guild else None
+            has_priority = RP_PRIORITY_ROLE_ID and member and any(r.id == RP_PRIORITY_ROLE_ID for r in member.roles)
+            star = "⭐ " if has_priority else ""
+            if RP_MONITOR_VC_ID:
+                lamp = "🟢" if uid in vc_member_ids else "🔴"
+                lines.append(f"{idx}. {lamp} {star}{name}")
+            else:
+                lines.append(f"{idx}. {star}{name}")
+        participant_text = "\n".join(lines)
+
+    status = "🔓 OPEN" if not rp_join_button_locked else "🔒 LOCKED"
+    hours_str = ", ".join(f"{h:02d}:XX" for h in sorted(RP_HOURS)) if RP_HOURS else "*nije postavljeno*"
+    embed = discord.Embed(
+        title="🎭 RP lista",
+        description=(
+            f"**⏰ Trajanje:** :{str(RP_START_MINUTE).zfill(2)} — :{str(RP_END_MINUTE).zfill(2)}\n"
+            f"**📅 Sati:** {hours_str}\n"
+            f"**👥 Prvih {RP_MAX_SLOTS} na listi, priority rola ima prednost**\n"
+            f"**📊 Status:** {status}\n\n"
+            f"**Sudionici ({len(rp_current_participants)}/{RP_MAX_SLOTS}):**\n"
+            f"{participant_text}\n\n"
+            f"*Izvlačenje u :{str(RP_DRAW_MINUTE).zfill(2)}, lista se zatvara u :{str(RP_END_MINUTE).zfill(2)}*"
+        ),
+        color=0x3498DB
+    )
+    embed.set_footer(text="Klikni gumb ispod za prijavu!")
+    return embed
+
+def build_biz_embed():
+    if not biz_current_participants:
+        participant_text = "🎯 *Nitko se još nije prijavio*"
+    else:
+        channel = bot.get_channel(BIZ_CHANNEL_ID)
+        guild = channel.guild if channel else None
+        vc_member_ids = _get_vc_member_ids(guild, BIZ_MONITOR_VC_ID)
+        lines = []
+        for idx, uid in enumerate(biz_current_participants[:BIZ_MAX_SLOTS], start=1):
+            name = biz_participant_names.get(uid)
+            if name is None:
+                member = guild.get_member(uid) if guild else None
+                name = member.display_name if member else f"<@{uid}>"
+                if name:
+                    biz_participant_names[uid] = name
+            member = guild.get_member(uid) if guild else None
+            has_priority = BIZ_PRIORITY_ROLE_ID and member and any(r.id == BIZ_PRIORITY_ROLE_ID for r in member.roles)
+            star = "⭐ " if has_priority else ""
+            if BIZ_MONITOR_VC_ID:
+                lamp = "🟢" if uid in vc_member_ids else "🔴"
+                lines.append(f"{idx}. {lamp} {star}{name}")
+            else:
+                lines.append(f"{idx}. {star}{name}")
+        participant_text = "\n".join(lines)
+
+    status = "🔓 OPEN" if not biz_join_button_locked else "🔒 LOCKED"
+    hours_str = ", ".join(f"{h:02d}:XX" for h in sorted(BIZ_HOURS)) if BIZ_HOURS else "*nije postavljeno*"
+    embed = discord.Embed(
+        title="💼 BIZ lista",
+        description=(
+            f"**⏰ Trajanje:** :{str(BIZ_START_MINUTE).zfill(2)} — :{str(BIZ_END_MINUTE).zfill(2)}\n"
+            f"**📅 Sati:** {hours_str}\n"
+            f"**👥 Prvih {BIZ_MAX_SLOTS} na listi, priority rola ima prednost**\n"
+            f"**📊 Status:** {status}\n\n"
+            f"**Sudionici ({len(biz_current_participants)}/{BIZ_MAX_SLOTS}):**\n"
+            f"{participant_text}\n\n"
+            f"*Izvlačenje u :{str(BIZ_DRAW_MINUTE).zfill(2)}, lista se zatvara u :{str(BIZ_END_MINUTE).zfill(2)}*"
+        ),
+        color=0x2ECC71
+    )
+    embed.set_footer(text="Klikni gumb ispod za prijavu!")
+    return embed
+
+async def update_rp_message():
+    if rp_current_event_message:
+        await rp_current_event_message.edit(embed=build_rp_embed(), view=RPJoinButtonView())
+
+async def update_biz_message():
+    if biz_current_event_message:
+        await biz_current_event_message.edit(embed=build_biz_embed(), view=BIZJoinButtonView())
+
+async def send_rp_vc_reminders():
+    if not rp_current_participants:
+        return 0, 0
+    deadline = str(RP_DRAW_MINUTE).zfill(2)
+    sent = failed = 0
+    for uid in list(rp_current_participants):
+        user = bot.get_user(uid)
+        if user is None:
+            try:
+                user = await bot.fetch_user(uid)
+            except Exception:
+                failed += 1
+                continue
+        try:
+            await user.send(f"🎙️ **RP podsjetnik** — moraš biti u **RP VC** do **:{deadline}** ili gubiš mjesto na listi! 🎭")
+            sent += 1
+        except Exception:
+            failed += 1
+    print(f"📨 RP VC reminders: {sent} ok, {failed} failed")
+    return sent, failed
+
+async def send_biz_vc_reminders():
+    if not biz_current_participants:
+        return 0, 0
+    deadline = str(BIZ_DRAW_MINUTE).zfill(2)
+    sent = failed = 0
+    for uid in list(biz_current_participants):
+        user = bot.get_user(uid)
+        if user is None:
+            try:
+                user = await bot.fetch_user(uid)
+            except Exception:
+                failed += 1
+                continue
+        try:
+            await user.send(f"🎙️ **BIZ podsjetnik** — moraš biti u **BIZ VC** do **:{deadline}** ili gubiš mjesto na listi! 💼")
+            sent += 1
+        except Exception:
+            failed += 1
+    print(f"📨 BIZ VC reminders: {sent} ok, {failed} failed")
+    return sent, failed
+
+# ==========================================
+# RP & BIZ JOIN BUTTON VIEWS
+# ==========================================
+def _priority_bump(guild, participants, priority_role_id, new_uid):
+    """Try to bump a non-priority user; return bumped uid or None if no room."""
+    for uid in reversed(participants):
+        m = guild.get_member(uid) if guild else None
+        if not m or not any(r.id == priority_role_id for r in m.roles):
+            return uid
+    return None
+
+class RPJoinButtonView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="🔘 Udi na RP listu", style=discord.ButtonStyle.primary, custom_id="rp_join")
+    async def join(self, interaction: discord.Interaction, button: discord.ui.Button):
+        global rp_current_participants, rp_join_button_locked
+        try:
+            if not rp_event_active:
+                await interaction.response.send_message("❌ RP event nije aktivan!", ephemeral=True); return
+            if rp_join_button_locked:
+                await interaction.response.send_message("🔒 Lista je zaključana!", ephemeral=True); return
+            if interaction.user.id in BAN_USERS:
+                await interaction.response.send_message("🚫 Baniran/a si.", ephemeral=True); return
+            if interaction.user.id in rp_current_participants:
+                await interaction.response.send_message("⚠️ Već si na listi!", ephemeral=True); return
+
+            guild = interaction.guild
+            member = guild.get_member(interaction.user.id) if guild else None
+            nick = member.display_name if member else interaction.user.display_name
+            has_priority = bool(RP_PRIORITY_ROLE_ID and member and any(r.id == RP_PRIORITY_ROLE_ID for r in member.roles))
+
+            if len(rp_current_participants) >= RP_MAX_SLOTS:
+                if has_priority:
+                    bumped = _priority_bump(guild, rp_current_participants, RP_PRIORITY_ROLE_ID, interaction.user.id)
+                    if bumped is None:
+                        await interaction.response.send_message("❌ Lista je puna i svi imaju priority rol.", ephemeral=True); return
+                    rp_current_participants.remove(bumped)
+                    rp_current_participants.append(interaction.user.id)
+                    rp_participant_names[interaction.user.id] = nick
+                    bm = guild.get_member(bumped) if guild else None
+                    bn = bm.display_name if bm else rp_participant_names.get(bumped, f"<@{bumped}>")
+                    await interaction.response.send_message(f"⭐ Ušao/la priority rolom! **{bn}** izbačen/a.", ephemeral=True)
+                    await update_rp_message()
+                    ch = bot.get_channel(RP_CHANNEL_ID)
+                    if ch: await ch.send(f"⭐ **{nick}** ušao/la priority rolom i izbacio/la **{bn}** s RP liste!")
+                else:
+                    await interaction.response.send_message(f"❌ Lista je puna ({RP_MAX_SLOTS}/{RP_MAX_SLOTS}).", ephemeral=True)
+                return
+
+            rp_current_participants.append(interaction.user.id)
+            rp_participant_names[interaction.user.id] = nick
+            prefix = "⭐ " if has_priority else ""
+            await interaction.response.send_message(f"✅ **{prefix}{nick}** na RP listi! ({len(rp_current_participants)}/{RP_MAX_SLOTS})", ephemeral=True)
+            await update_rp_message()
+        except Exception as e:
+            print(f"❌ rp_join: {e}")
+            try: await interaction.response.send_message("❌ Greška. Pokušaj ponovo.", ephemeral=True)
+            except Exception: pass
+
+    @discord.ui.button(label="🚪 Izađi s RP liste", style=discord.ButtonStyle.danger, custom_id="rp_leave")
+    async def leave(self, interaction: discord.Interaction, button: discord.ui.Button):
+        global rp_current_participants
+        try:
+            if not rp_event_active:
+                await interaction.response.send_message("❌ Nema aktivnog RP eventa.", ephemeral=True); return
+            if rp_join_button_locked:
+                await interaction.response.send_message("🔒 Lista je zaključana.", ephemeral=True); return
+            if interaction.user.id not in rp_current_participants:
+                await interaction.response.send_message("⚠️ Nisi na RP listi!", ephemeral=True); return
+            rp_current_participants.remove(interaction.user.id)
+            guild = interaction.guild
+            member = guild.get_member(interaction.user.id) if guild else None
+            nick = member.display_name if member else interaction.user.display_name
+            await interaction.response.send_message(f"✅ **{nick}** skinut/a s RP liste.", ephemeral=True)
+            await update_rp_message()
+        except Exception as e:
+            print(f"❌ rp_leave: {e}")
+            try: await interaction.response.send_message("❌ Greška.", ephemeral=True)
+            except Exception: pass
+
+
+class BIZJoinButtonView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="🔘 Udi na BIZ listu", style=discord.ButtonStyle.success, custom_id="biz_join")
+    async def join(self, interaction: discord.Interaction, button: discord.ui.Button):
+        global biz_current_participants, biz_join_button_locked
+        try:
+            if not biz_event_active:
+                await interaction.response.send_message("❌ BIZ event nije aktivan!", ephemeral=True); return
+            if biz_join_button_locked:
+                await interaction.response.send_message("🔒 Lista je zaključana!", ephemeral=True); return
+            if interaction.user.id in BAN_USERS:
+                await interaction.response.send_message("🚫 Baniran/a si.", ephemeral=True); return
+            if interaction.user.id in biz_current_participants:
+                await interaction.response.send_message("⚠️ Već si na listi!", ephemeral=True); return
+
+            guild = interaction.guild
+            member = guild.get_member(interaction.user.id) if guild else None
+            nick = member.display_name if member else interaction.user.display_name
+            has_priority = bool(BIZ_PRIORITY_ROLE_ID and member and any(r.id == BIZ_PRIORITY_ROLE_ID for r in member.roles))
+
+            if len(biz_current_participants) >= BIZ_MAX_SLOTS:
+                if has_priority:
+                    bumped = _priority_bump(guild, biz_current_participants, BIZ_PRIORITY_ROLE_ID, interaction.user.id)
+                    if bumped is None:
+                        await interaction.response.send_message("❌ Lista je puna i svi imaju priority rol.", ephemeral=True); return
+                    biz_current_participants.remove(bumped)
+                    biz_current_participants.append(interaction.user.id)
+                    biz_participant_names[interaction.user.id] = nick
+                    bm = guild.get_member(bumped) if guild else None
+                    bn = bm.display_name if bm else biz_participant_names.get(bumped, f"<@{bumped}>")
+                    await interaction.response.send_message(f"⭐ Ušao/la priority rolom! **{bn}** izbačen/a.", ephemeral=True)
+                    await update_biz_message()
+                    ch = bot.get_channel(BIZ_CHANNEL_ID)
+                    if ch: await ch.send(f"⭐ **{nick}** ušao/la priority rolom i izbacio/la **{bn}** s BIZ liste!")
+                else:
+                    await interaction.response.send_message(f"❌ Lista je puna ({BIZ_MAX_SLOTS}/{BIZ_MAX_SLOTS}).", ephemeral=True)
+                return
+
+            biz_current_participants.append(interaction.user.id)
+            biz_participant_names[interaction.user.id] = nick
+            prefix = "⭐ " if has_priority else ""
+            await interaction.response.send_message(f"✅ **{prefix}{nick}** na BIZ listi! ({len(biz_current_participants)}/{BIZ_MAX_SLOTS})", ephemeral=True)
+            await update_biz_message()
+        except Exception as e:
+            print(f"❌ biz_join: {e}")
+            try: await interaction.response.send_message("❌ Greška. Pokušaj ponovo.", ephemeral=True)
+            except Exception: pass
+
+    @discord.ui.button(label="🚪 Izađi s BIZ liste", style=discord.ButtonStyle.danger, custom_id="biz_leave")
+    async def leave(self, interaction: discord.Interaction, button: discord.ui.Button):
+        global biz_current_participants
+        try:
+            if not biz_event_active:
+                await interaction.response.send_message("❌ Nema aktivnog BIZ eventa.", ephemeral=True); return
+            if biz_join_button_locked:
+                await interaction.response.send_message("🔒 Lista je zaključana.", ephemeral=True); return
+            if interaction.user.id not in biz_current_participants:
+                await interaction.response.send_message("⚠️ Nisi na BIZ listi!", ephemeral=True); return
+            biz_current_participants.remove(interaction.user.id)
+            guild = interaction.guild
+            member = guild.get_member(interaction.user.id) if guild else None
+            nick = member.display_name if member else interaction.user.display_name
+            await interaction.response.send_message(f"✅ **{nick}** skinut/a s BIZ liste.", ephemeral=True)
+            await update_biz_message()
+        except Exception as e:
+            print(f"❌ biz_leave: {e}")
+            try: await interaction.response.send_message("❌ Greška.", ephemeral=True)
+            except Exception: pass
+
+
+# ==========================================
+# RP & BIZ SCHEDULERS
+# ==========================================
+@tasks.loop(seconds=5)
+async def rp_vc_status_refresh():
+    if rp_event_active and RP_MONITOR_VC_ID and rp_current_event_message:
+        await update_rp_message()
+
+@tasks.loop(seconds=5)
+async def biz_vc_status_refresh():
+    if biz_event_active and BIZ_MONITOR_VC_ID and biz_current_event_message:
+        await update_biz_message()
+
+def _draw_winner(participants, history, blacklist):
+    """Pick a random eligible winner. Returns (winner_id, winner_history)."""
+    eligible = [uid for uid in participants if uid not in blacklist]
+    if not eligible:
+        return None, history
+    winner_id = random.choice(eligible)
+    history.append({"id": winner_id, "time": datetime.now(TIMEZONE).strftime("%d.%m. %H:%M")})
+    if len(history) > 5:
+        history.pop(0)
+    return winner_id, history
+
+async def _run_rp_event(channel):
+    """Full RP event flow: start → draw → end (called by scheduler)."""
+    global rp_event_active, rp_join_button_locked, rp_current_participants, rp_participant_names, rp_current_event_message, rp_last_winner_id, rp_winner_history
+    now = datetime.now(TIMEZONE)
+    minute = now.minute
+
+    # START
+    if minute == RP_START_MINUTE and not rp_event_active:
+        rp_event_active = True
+        rp_join_button_locked = False
+        rp_current_participants = []
+        rp_participant_names.clear()
+        embed = build_rp_embed()
+        view = RPJoinButtonView()
+        msg = await channel.send(embed=embed, view=view)
+        rp_current_event_message = msg
+        await channel.send(f"@everyone 🎭 **RP lista je počela! Prvih {RP_MAX_SLOTS} ulaze na listu! 🎭**")
+        print(f"✅ RP Event started at {now.strftime('%H:%M')}")
+
+    # VC REMINDER
+    if RP_VC_REMIND_MINUTE is not None and minute == RP_VC_REMIND_MINUTE and rp_event_active:
+        await send_rp_vc_reminders()
+
+    # DRAW
+    if minute == RP_DRAW_MINUTE and rp_event_active:
+        if len(rp_current_participants) == 0:
+            await channel.send("😢 **Nitko nije na RP listi.**")
+        else:
+            winner_id, rp_winner_history = _draw_winner(rp_current_participants, rp_winner_history, BLACKLIST_USERS)
+            if winner_id is None:
+                await channel.send("⚠️ **Nitko nije prihvatljiv za izvlačenje** — svi na blacklisti.")
+            else:
+                rp_last_winner_id = winner_id
+                w = bot.get_user(winner_id)
+                wm = w.mention if w else f"<@{winner_id}>"
+                await channel.send(f"🎭🎉 **RP pobjednik: {wm}!** 🎭")
+        print(f"🎲 RP Draw done at {now.strftime('%H:%M')}")
+
+    # END
+    if minute == RP_END_MINUTE and rp_event_active:
+        rp_join_button_locked = True
+        await update_rp_message()
+        guild = channel.guild
+        if rp_current_participants:
+            name_parts = []
+            for uid in rp_current_participants[:RP_MAX_SLOTS]:
+                name = rp_participant_names.get(uid)
+                if name is None:
+                    m = guild.get_member(uid) if guild else None
+                    name = m.display_name if m else f"<@{uid}>"
+                m = guild.get_member(uid) if guild else None
+                star = "⭐ " if (RP_PRIORITY_ROLE_ID and m and any(r.id == RP_PRIORITY_ROLE_ID for r in m.roles)) else ""
+                name_parts.append(f"{star}{name}")
+            await channel.send(f"**RP Lista je:**\n{', '.join(name_parts)}")
+        rp_event_active = False
+        rp_join_button_locked = False
+        rp_current_participants = []
+        rp_participant_names.clear()
+        await _disable_rp_event_message()
+        print(f"🏁 RP Event finished at {now.strftime('%H:%M')}")
+
+async def _run_biz_event(channel):
+    """Full BIZ event flow."""
+    global biz_event_active, biz_join_button_locked, biz_current_participants, biz_participant_names, biz_current_event_message, biz_last_winner_id, biz_winner_history
+    now = datetime.now(TIMEZONE)
+    minute = now.minute
+
+    if minute == BIZ_START_MINUTE and not biz_event_active:
+        biz_event_active = True
+        biz_join_button_locked = False
+        biz_current_participants = []
+        biz_participant_names.clear()
+        embed = build_biz_embed()
+        view = BIZJoinButtonView()
+        msg = await channel.send(embed=embed, view=view)
+        biz_current_event_message = msg
+        await channel.send(f"@everyone 💼 **BIZ lista je počela! Prvih {BIZ_MAX_SLOTS} ulaze! 💼**")
+        print(f"✅ BIZ Event started at {now.strftime('%H:%M')}")
+
+    if BIZ_VC_REMIND_MINUTE is not None and minute == BIZ_VC_REMIND_MINUTE and biz_event_active:
+        await send_biz_vc_reminders()
+
+    if minute == BIZ_DRAW_MINUTE and biz_event_active:
+        if len(biz_current_participants) == 0:
+            await channel.send("😢 **Nitko nije na BIZ listi.**")
+        else:
+            winner_id, biz_winner_history = _draw_winner(biz_current_participants, biz_winner_history, BLACKLIST_USERS)
+            if winner_id is None:
+                await channel.send("⚠️ **Nitko nije prihvatljiv za izvlačenje** — svi na blacklisti.")
+            else:
+                biz_last_winner_id = winner_id
+                w = bot.get_user(winner_id)
+                wm = w.mention if w else f"<@{winner_id}>"
+                await channel.send(f"💼🎉 **BIZ pobjednik: {wm}!** 💼")
+        print(f"🎲 BIZ Draw done at {now.strftime('%H:%M')}")
+
+    if minute == BIZ_END_MINUTE and biz_event_active:
+        biz_join_button_locked = True
+        await update_biz_message()
+        guild = channel.guild
+        if biz_current_participants:
+            name_parts = []
+            for uid in biz_current_participants[:BIZ_MAX_SLOTS]:
+                name = biz_participant_names.get(uid)
+                if name is None:
+                    m = guild.get_member(uid) if guild else None
+                    name = m.display_name if m else f"<@{uid}>"
+                m = guild.get_member(uid) if guild else None
+                star = "⭐ " if (BIZ_PRIORITY_ROLE_ID and m and any(r.id == BIZ_PRIORITY_ROLE_ID for r in m.roles)) else ""
+                name_parts.append(f"{star}{name}")
+            await channel.send(f"**BIZ Lista je:**\n{', '.join(name_parts)}")
+        biz_event_active = False
+        biz_join_button_locked = False
+        biz_current_participants = []
+        biz_participant_names.clear()
+        await _disable_biz_event_message()
+        print(f"🏁 BIZ Event finished at {now.strftime('%H:%M')}")
+
+@tasks.loop(minutes=1)
+async def rp_event_scheduler():
+    if RP_CHANNEL_ID == 0 or not RP_HOURS:
+        return
+    now = datetime.now(TIMEZONE)
+    hour, minute = now.hour, now.minute
+    if hour not in RP_HOURS:
+        return
+    channel = bot.get_channel(RP_CHANNEL_ID)
+    if not channel:
+        print(f"❌ RP Channel {RP_CHANNEL_ID} not found!")
+        return
+    # 5-min reminder before start
+    reminder_minute = (RP_START_MINUTE - 5) % 60
+    if minute == reminder_minute and not rp_event_active:
+        await channel.send("⏳ **RP lista počinje za 5 minuta — budite spremni! 🎭**")
+    await _run_rp_event(channel)
+
+@tasks.loop(minutes=1)
+async def biz_event_scheduler():
+    if BIZ_CHANNEL_ID == 0 or not BIZ_HOURS:
+        return
+    now = datetime.now(TIMEZONE)
+    hour, minute = now.hour, now.minute
+    if hour not in BIZ_HOURS:
+        return
+    channel = bot.get_channel(BIZ_CHANNEL_ID)
+    if not channel:
+        print(f"❌ BIZ Channel {BIZ_CHANNEL_ID} not found!")
+        return
+    reminder_minute = (BIZ_START_MINUTE - 5) % 60
+    if minute == reminder_minute and not biz_event_active:
+        await channel.send("⏳ **BIZ lista počinje za 5 minuta — budite spremni! 💼**")
+    await _run_biz_event(channel)
+
+
+# ==========================================
+# RP SETUP — MODALS & VIEW
+# ==========================================
+class RPSetupModal(discord.ui.Modal, title="⚙️ RP Event — Konfiguracija"):
+    def __init__(self, guild_id: int):
+        super().__init__()
+        self.guild_id = guild_id
+        self.kanal_id = discord.ui.TextInput(
+            label="Kanal ID za RP event",
+            placeholder="Desni klik na kanal → Kopiraj ID",
+            default=str(RP_CHANNEL_ID) if RP_CHANNEL_ID != 0 else "",
+            required=False, max_length=25,
+        )
+        self.vremena = discord.ui.TextInput(
+            label="Start i kraj (dvije minute, razmak)",
+            placeholder="npr. 25 40",
+            default=f"{RP_START_MINUTE} {RP_END_MINUTE}",
+            required=False, max_length=10,
+        )
+        self.izvlacenje = discord.ui.TextInput(
+            label="Izvlačenje (minuta između starta i kraja)",
+            placeholder="npr. 35",
+            default=str(RP_DRAW_MINUTE),
+            required=False, max_length=3,
+        )
+        self.slotovi = discord.ui.TextInput(
+            label="Max slotova (1–100)",
+            placeholder="npr. 10",
+            default=str(RP_MAX_SLOTS),
+            required=False, max_length=3,
+        )
+        self.vc_remind = discord.ui.TextInput(
+            label="VC podsjetnik (minuta) — prazno = isključeno",
+            placeholder="npr. 32 — prazno za isključiti",
+            default=str(RP_VC_REMIND_MINUTE) if RP_VC_REMIND_MINUTE is not None else "",
+            required=False, max_length=3,
+        )
+        for item in [self.kanal_id, self.vremena, self.izvlacenje, self.slotovi, self.vc_remind]:
+            self.add_item(item)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        global RP_CHANNEL_ID, RP_START_MINUTE, RP_END_MINUTE, RP_DRAW_MINUTE, RP_MAX_SLOTS, RP_VC_REMIND_MINUTE
+        guild = bot.get_guild(self.guild_id)
+        errors, applied = [], []
+
+        raw_ch = self.kanal_id.value.strip()
+        new_channel_id = None
+        if raw_ch:
+            try:
+                cid = int(raw_ch)
+                ch = guild.get_channel(cid) if guild else None
+                if ch is None: errors.append("❌ Kanal s tim ID-om nije pronađen.")
+                else: new_channel_id = cid
+            except ValueError: errors.append("❌ Kanal ID mora biti broj.")
+
+        new_start = new_end = None
+        raw_vr = self.vremena.value.strip()
+        if raw_vr:
+            parts = raw_vr.split()
+            if len(parts) != 2: errors.append("❌ Vremena: upiši dva broja (npr. `25 40`).")
+            else:
+                try:
+                    s, e = int(parts[0]), int(parts[1])
+                    if not (0 <= s <= 59 and 0 <= e <= 59): errors.append("❌ Vremena: minute moraju biti 0–59.")
+                    elif s == e: errors.append("❌ Vremena: start i kraj ne mogu biti isti.")
+                    elif rp_event_active: errors.append("⚠️ Ne možeš mijenjati dok event traje.")
+                    else: new_start, new_end = s, e
+                except ValueError: errors.append("❌ Vremena: upiši dva broja.")
+
+        eff_start = new_start if new_start is not None else RP_START_MINUTE
+        eff_end   = new_end   if new_end   is not None else RP_END_MINUTE
+
+        new_draw = None
+        raw_dr = self.izvlacenje.value.strip()
+        if raw_dr:
+            try:
+                d = int(raw_dr)
+                if not (0 <= d <= 59): errors.append("❌ Izvlačenje: minuta mora biti 0–59.")
+                elif d <= eff_start or d >= eff_end: errors.append(f"❌ Izvlačenje mora biti između :{str(eff_start).zfill(2)} i :{str(eff_end).zfill(2)}.")
+                elif rp_event_active: errors.append("⚠️ Ne možeš mijenjati dok event traje.")
+                else: new_draw = d
+            except ValueError: errors.append("❌ Izvlačenje: upiši broj.")
+
+        new_slots = None
+        raw_sl = self.slotovi.value.strip()
+        if raw_sl:
+            try:
+                sl = int(raw_sl)
+                if not (1 <= sl <= 100): errors.append("❌ Slotovi: 1–100.")
+                elif rp_event_active: errors.append("⚠️ Ne možeš mijenjati dok event traje.")
+                else: new_slots = sl
+            except ValueError: errors.append("❌ Slotovi: upiši broj.")
+
+        new_vc = -1
+        raw_vc = self.vc_remind.value.strip()
+        if raw_vc:
+            try:
+                vr = int(raw_vc)
+                if not (0 <= vr <= 59): errors.append("❌ VC podsjetnik: 0–59.")
+                else: new_vc = vr
+            except ValueError: errors.append("❌ VC podsjetnik: upiši broj ili ostavi prazno.")
+        else:
+            new_vc = None
+
+        if errors:
+            await interaction.response.send_message("⚠️ **Greške:**\n" + "\n".join(errors), ephemeral=True)
+            return
+
+        if new_channel_id is not None:
+            RP_CHANNEL_ID = new_channel_id; applied.append(f"📡 Kanal: <#{RP_CHANNEL_ID}>")
+        if new_start is not None:
+            RP_START_MINUTE, RP_END_MINUTE = new_start, new_end
+            applied.append(f"⏰ Start/kraj: :{str(new_start).zfill(2)} → :{str(new_end).zfill(2)}")
+        if new_draw is not None:
+            RP_DRAW_MINUTE = new_draw; applied.append(f"🎲 Izvlačenje: :{str(new_draw).zfill(2)}")
+        if new_slots is not None:
+            RP_MAX_SLOTS = new_slots; applied.append(f"👥 Max slotova: {new_slots}")
+        if new_vc != -1:
+            if new_vc is None and RP_VC_REMIND_MINUTE is not None:
+                RP_VC_REMIND_MINUTE = None; applied.append("🎙️ VC podsjetnik: isključen")
+            elif new_vc is not None:
+                RP_VC_REMIND_MINUTE = new_vc; applied.append(f"🎙️ VC podsjetnik: :{str(new_vc).zfill(2)}")
+        if applied:
+            save_settings()
+
+        await interaction.response.send_message(
+            ("✅ **Primijenjeno:**\n" + "\n".join(applied)) if applied else "Nije promijenjeno ništa.",
+            ephemeral=True,
+        )
+
+class RPHoursModal(discord.ui.Modal, title="📅 RP Event — Sati (max 3 puta/dan)"):
+    def __init__(self):
+        super().__init__()
+        current = " ".join(str(h) for h in sorted(RP_HOURS)) if RP_HOURS else ""
+        self.sati = discord.ui.TextInput(
+            label="Sati (24h format, razmak između, max 3)",
+            placeholder="npr. 12 18 22 — prazno za isključiti sve",
+            default=current,
+            required=False, max_length=15,
+        )
+        self.add_item(self.sati)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        global RP_HOURS
+        raw = self.sati.value.strip()
+        if not raw:
+            RP_HOURS = []
+            save_settings()
+            await interaction.response.send_message("✅ RP sati obrisani — event neće se pokretati automatski.", ephemeral=True)
+            return
+        parts = raw.split()
+        if len(parts) > 3:
+            await interaction.response.send_message("❌ Maksimalno 3 sata za RP event.", ephemeral=True); return
+        try:
+            hours = [int(h) for h in parts]
+            if not all(0 <= h <= 23 for h in hours):
+                await interaction.response.send_message("❌ Sati moraju biti 0–23.", ephemeral=True); return
+            if len(hours) != len(set(hours)):
+                await interaction.response.send_message("❌ Sati se ne smiju ponavljati.", ephemeral=True); return
+            RP_HOURS = hours
+            save_settings()
+            hrs = ", ".join(f"**{h:02d}:XX**" for h in sorted(RP_HOURS))
+            await interaction.response.send_message(f"✅ RP sati postavljeni: {hrs}", ephemeral=True)
+        except ValueError:
+            await interaction.response.send_message("❌ Upiši samo brojeve (npr. `12 18 22`).", ephemeral=True)
+
+class RPPriorityRoleModal(discord.ui.Modal, title="⭐ RP Priority Rola"):
+    def __init__(self, guild_id: int):
+        super().__init__()
+        self.guild_id = guild_id
+        self.role_id = discord.ui.TextInput(
+            label="ID priority role — prazno = ukloni",
+            placeholder="Desni klik na rolu → Kopiraj ID",
+            default=str(RP_PRIORITY_ROLE_ID) if RP_PRIORITY_ROLE_ID else "",
+            required=False, max_length=25,
+        )
+        self.add_item(self.role_id)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        global RP_PRIORITY_ROLE_ID
+        guild = bot.get_guild(self.guild_id)
+        raw = self.role_id.value.strip()
+        if not raw:
+            RP_PRIORITY_ROLE_ID = None; save_settings()
+            await interaction.response.send_message("✅ RP priority rola uklonjena.", ephemeral=True); return
+        try:
+            rid = int(raw)
+            role = guild.get_role(rid) if guild else None
+            if role is None:
+                await interaction.response.send_message("❌ Rola nije pronađena.", ephemeral=True); return
+            RP_PRIORITY_ROLE_ID = rid; save_settings()
+            await interaction.response.send_message(f"✅ RP priority rola: **{role.name}**", ephemeral=True)
+        except ValueError:
+            await interaction.response.send_message("❌ ID mora biti broj.", ephemeral=True)
+
+class RPMonitorVCModal(discord.ui.Modal, title="🎙️ RP VC Lampice"):
+    def __init__(self, guild_id: int):
+        super().__init__()
+        self.guild_id = guild_id
+        self.vc_id = discord.ui.TextInput(
+            label="Voice kanal ID — prazno = isključi",
+            placeholder="Desni klik na voice kanal → Kopiraj ID",
+            default=str(RP_MONITOR_VC_ID) if RP_MONITOR_VC_ID else "",
+            required=False, max_length=25,
+        )
+        self.add_item(self.vc_id)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        global RP_MONITOR_VC_ID
+        guild = bot.get_guild(self.guild_id)
+        raw = self.vc_id.value.strip()
+        if not raw:
+            RP_MONITOR_VC_ID = None; save_settings()
+            await interaction.response.send_message("✅ RP VC lampice isključene.", ephemeral=True); return
+        try:
+            vid = int(raw)
+            vc = guild.get_channel(vid) if guild else None
+            if vc is None or not isinstance(vc, discord.VoiceChannel):
+                await interaction.response.send_message("❌ Voice kanal nije pronađen.", ephemeral=True); return
+            RP_MONITOR_VC_ID = vid; save_settings()
+            await interaction.response.send_message(f"✅ RP VC lampice: **{vc.name}**  🟢 = u kanalu  🔴 = nije", ephemeral=True)
+        except ValueError:
+            await interaction.response.send_message("❌ ID mora biti broj.", ephemeral=True)
+
+class RPSetupView(discord.ui.View):
+    def __init__(self, guild_id: int, author_id: int):
+        super().__init__(timeout=600)
+        self.guild_id = guild_id
+        self.author_id = author_id
+
+    def _check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.author_id
+
+    @discord.ui.button(label="🔧 Konfiguracija", style=discord.ButtonStyle.primary)
+    async def config(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not self._check(interaction):
+            await interaction.response.send_message("❌ Samo pokretač /setuprp može koristiti ovo.", ephemeral=True); return
+        await interaction.response.send_modal(RPSetupModal(self.guild_id))
+
+    @discord.ui.button(label="📅 Sati", style=discord.ButtonStyle.primary)
+    async def hours(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not self._check(interaction):
+            await interaction.response.send_message("❌ Samo pokretač /setuprp može koristiti ovo.", ephemeral=True); return
+        await interaction.response.send_modal(RPHoursModal())
+
+    @discord.ui.button(label="⭐ Priority rola", style=discord.ButtonStyle.secondary)
+    async def priority(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not self._check(interaction):
+            await interaction.response.send_message("❌ Samo pokretač /setuprp može koristiti ovo.", ephemeral=True); return
+        await interaction.response.send_modal(RPPriorityRoleModal(self.guild_id))
+
+    @discord.ui.button(label="🎙️ VC lampice", style=discord.ButtonStyle.secondary)
+    async def vc(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not self._check(interaction):
+            await interaction.response.send_message("❌ Samo pokretač /setuprp može koristiti ovo.", ephemeral=True); return
+        await interaction.response.send_modal(RPMonitorVCModal(self.guild_id))
+
+
+# ==========================================
+# BIZ SETUP — MODALS & VIEW
+# ==========================================
+class BIZSetupModal(discord.ui.Modal, title="⚙️ BIZ Event — Konfiguracija"):
+    def __init__(self, guild_id: int):
+        super().__init__()
+        self.guild_id = guild_id
+        self.kanal_id = discord.ui.TextInput(
+            label="Kanal ID za BIZ event",
+            placeholder="Desni klik na kanal → Kopiraj ID",
+            default=str(BIZ_CHANNEL_ID) if BIZ_CHANNEL_ID != 0 else "",
+            required=False, max_length=25,
+        )
+        self.vremena = discord.ui.TextInput(
+            label="Start i kraj (dvije minute, razmak)",
+            placeholder="npr. 25 40",
+            default=f"{BIZ_START_MINUTE} {BIZ_END_MINUTE}",
+            required=False, max_length=10,
+        )
+        self.izvlacenje = discord.ui.TextInput(
+            label="Izvlačenje (minuta između starta i kraja)",
+            placeholder="npr. 35",
+            default=str(BIZ_DRAW_MINUTE),
+            required=False, max_length=3,
+        )
+        self.slotovi = discord.ui.TextInput(
+            label="Max slotova (1–100)",
+            placeholder="npr. 10",
+            default=str(BIZ_MAX_SLOTS),
+            required=False, max_length=3,
+        )
+        self.vc_remind = discord.ui.TextInput(
+            label="VC podsjetnik (minuta) — prazno = isključeno",
+            placeholder="npr. 32 — prazno za isključiti",
+            default=str(BIZ_VC_REMIND_MINUTE) if BIZ_VC_REMIND_MINUTE is not None else "",
+            required=False, max_length=3,
+        )
+        for item in [self.kanal_id, self.vremena, self.izvlacenje, self.slotovi, self.vc_remind]:
+            self.add_item(item)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        global BIZ_CHANNEL_ID, BIZ_START_MINUTE, BIZ_END_MINUTE, BIZ_DRAW_MINUTE, BIZ_MAX_SLOTS, BIZ_VC_REMIND_MINUTE
+        guild = bot.get_guild(self.guild_id)
+        errors, applied = [], []
+
+        raw_ch = self.kanal_id.value.strip()
+        new_channel_id = None
+        if raw_ch:
+            try:
+                cid = int(raw_ch)
+                ch = guild.get_channel(cid) if guild else None
+                if ch is None: errors.append("❌ Kanal s tim ID-om nije pronađen.")
+                else: new_channel_id = cid
+            except ValueError: errors.append("❌ Kanal ID mora biti broj.")
+
+        new_start = new_end = None
+        raw_vr = self.vremena.value.strip()
+        if raw_vr:
+            parts = raw_vr.split()
+            if len(parts) != 2: errors.append("❌ Vremena: upiši dva broja.")
+            else:
+                try:
+                    s, e = int(parts[0]), int(parts[1])
+                    if not (0 <= s <= 59 and 0 <= e <= 59): errors.append("❌ Vremena: 0–59.")
+                    elif s == e: errors.append("❌ Start i kraj ne mogu biti isti.")
+                    elif biz_event_active: errors.append("⚠️ Ne možeš mijenjati dok event traje.")
+                    else: new_start, new_end = s, e
+                except ValueError: errors.append("❌ Upiši dva broja.")
+
+        eff_start = new_start if new_start is not None else BIZ_START_MINUTE
+        eff_end   = new_end   if new_end   is not None else BIZ_END_MINUTE
+
+        new_draw = None
+        raw_dr = self.izvlacenje.value.strip()
+        if raw_dr:
+            try:
+                d = int(raw_dr)
+                if not (0 <= d <= 59): errors.append("❌ Izvlačenje: 0–59.")
+                elif d <= eff_start or d >= eff_end: errors.append(f"❌ Između :{str(eff_start).zfill(2)} i :{str(eff_end).zfill(2)}.")
+                elif biz_event_active: errors.append("⚠️ Ne možeš mijenjati dok event traje.")
+                else: new_draw = d
+            except ValueError: errors.append("❌ Upiši broj.")
+
+        new_slots = None
+        raw_sl = self.slotovi.value.strip()
+        if raw_sl:
+            try:
+                sl = int(raw_sl)
+                if not (1 <= sl <= 100): errors.append("❌ Slotovi: 1–100.")
+                elif biz_event_active: errors.append("⚠️ Ne možeš mijenjati dok event traje.")
+                else: new_slots = sl
+            except ValueError: errors.append("❌ Upiši broj.")
+
+        new_vc = -1
+        raw_vc = self.vc_remind.value.strip()
+        if raw_vc:
+            try:
+                vr = int(raw_vc)
+                if not (0 <= vr <= 59): errors.append("❌ VC podsjetnik: 0–59.")
+                else: new_vc = vr
+            except ValueError: errors.append("❌ Upiši broj ili ostavi prazno.")
+        else:
+            new_vc = None
+
+        if errors:
+            await interaction.response.send_message("⚠️ **Greške:**\n" + "\n".join(errors), ephemeral=True)
+            return
+
+        if new_channel_id is not None:
+            BIZ_CHANNEL_ID = new_channel_id; applied.append(f"📡 Kanal: <#{BIZ_CHANNEL_ID}>")
+        if new_start is not None:
+            BIZ_START_MINUTE, BIZ_END_MINUTE = new_start, new_end
+            applied.append(f"⏰ Start/kraj: :{str(new_start).zfill(2)} → :{str(new_end).zfill(2)}")
+        if new_draw is not None:
+            BIZ_DRAW_MINUTE = new_draw; applied.append(f"🎲 Izvlačenje: :{str(new_draw).zfill(2)}")
+        if new_slots is not None:
+            BIZ_MAX_SLOTS = new_slots; applied.append(f"👥 Max slotova: {new_slots}")
+        if new_vc != -1:
+            if new_vc is None and BIZ_VC_REMIND_MINUTE is not None:
+                BIZ_VC_REMIND_MINUTE = None; applied.append("🎙️ VC podsjetnik: isključen")
+            elif new_vc is not None:
+                BIZ_VC_REMIND_MINUTE = new_vc; applied.append(f"🎙️ VC podsjetnik: :{str(new_vc).zfill(2)}")
+        if applied:
+            save_settings()
+
+        await interaction.response.send_message(
+            ("✅ **Primijenjeno:**\n" + "\n".join(applied)) if applied else "Nije promijenjeno ništa.",
+            ephemeral=True,
+        )
+
+class BIZHoursModal(discord.ui.Modal, title="📅 BIZ Event — Sati (max 2 puta/dan)"):
+    def __init__(self):
+        super().__init__()
+        current = " ".join(str(h) for h in sorted(BIZ_HOURS)) if BIZ_HOURS else ""
+        self.sati = discord.ui.TextInput(
+            label="Sati (24h format, razmak između, max 2)",
+            placeholder="npr. 14 20 — prazno za isključiti",
+            default=current,
+            required=False, max_length=10,
+        )
+        self.add_item(self.sati)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        global BIZ_HOURS
+        raw = self.sati.value.strip()
+        if not raw:
+            BIZ_HOURS = []; save_settings()
+            await interaction.response.send_message("✅ BIZ sati obrisani — event neće se pokretati automatski.", ephemeral=True); return
+        parts = raw.split()
+        if len(parts) > 2:
+            await interaction.response.send_message("❌ Maksimalno 2 sata za BIZ event.", ephemeral=True); return
+        try:
+            hours = [int(h) for h in parts]
+            if not all(0 <= h <= 23 for h in hours):
+                await interaction.response.send_message("❌ Sati moraju biti 0–23.", ephemeral=True); return
+            if len(hours) != len(set(hours)):
+                await interaction.response.send_message("❌ Sati se ne smiju ponavljati.", ephemeral=True); return
+            BIZ_HOURS = hours; save_settings()
+            hrs = ", ".join(f"**{h:02d}:XX**" for h in sorted(BIZ_HOURS))
+            await interaction.response.send_message(f"✅ BIZ sati postavljeni: {hrs}", ephemeral=True)
+        except ValueError:
+            await interaction.response.send_message("❌ Upiši samo brojeve (npr. `14 20`).", ephemeral=True)
+
+class BIZPriorityRoleModal(discord.ui.Modal, title="⭐ BIZ Priority Rola"):
+    def __init__(self, guild_id: int):
+        super().__init__()
+        self.guild_id = guild_id
+        self.role_id = discord.ui.TextInput(
+            label="ID priority role — prazno = ukloni",
+            placeholder="Desni klik na rolu → Kopiraj ID",
+            default=str(BIZ_PRIORITY_ROLE_ID) if BIZ_PRIORITY_ROLE_ID else "",
+            required=False, max_length=25,
+        )
+        self.add_item(self.role_id)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        global BIZ_PRIORITY_ROLE_ID
+        guild = bot.get_guild(self.guild_id)
+        raw = self.role_id.value.strip()
+        if not raw:
+            BIZ_PRIORITY_ROLE_ID = None; save_settings()
+            await interaction.response.send_message("✅ BIZ priority rola uklonjena.", ephemeral=True); return
+        try:
+            rid = int(raw)
+            role = guild.get_role(rid) if guild else None
+            if role is None:
+                await interaction.response.send_message("❌ Rola nije pronađena.", ephemeral=True); return
+            BIZ_PRIORITY_ROLE_ID = rid; save_settings()
+            await interaction.response.send_message(f"✅ BIZ priority rola: **{role.name}**", ephemeral=True)
+        except ValueError:
+            await interaction.response.send_message("❌ ID mora biti broj.", ephemeral=True)
+
+class BIZMonitorVCModal(discord.ui.Modal, title="🎙️ BIZ VC Lampice"):
+    def __init__(self, guild_id: int):
+        super().__init__()
+        self.guild_id = guild_id
+        self.vc_id = discord.ui.TextInput(
+            label="Voice kanal ID — prazno = isključi",
+            placeholder="Desni klik na voice kanal → Kopiraj ID",
+            default=str(BIZ_MONITOR_VC_ID) if BIZ_MONITOR_VC_ID else "",
+            required=False, max_length=25,
+        )
+        self.add_item(self.vc_id)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        global BIZ_MONITOR_VC_ID
+        guild = bot.get_guild(self.guild_id)
+        raw = self.vc_id.value.strip()
+        if not raw:
+            BIZ_MONITOR_VC_ID = None; save_settings()
+            await interaction.response.send_message("✅ BIZ VC lampice isključene.", ephemeral=True); return
+        try:
+            vid = int(raw)
+            vc = guild.get_channel(vid) if guild else None
+            if vc is None or not isinstance(vc, discord.VoiceChannel):
+                await interaction.response.send_message("❌ Voice kanal nije pronađen.", ephemeral=True); return
+            BIZ_MONITOR_VC_ID = vid; save_settings()
+            await interaction.response.send_message(f"✅ BIZ VC lampice: **{vc.name}**  🟢 = u kanalu  🔴 = nije", ephemeral=True)
+        except ValueError:
+            await interaction.response.send_message("❌ ID mora biti broj.", ephemeral=True)
+
+class BIZSetupView(discord.ui.View):
+    def __init__(self, guild_id: int, author_id: int):
+        super().__init__(timeout=600)
+        self.guild_id = guild_id
+        self.author_id = author_id
+
+    def _check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.author_id
+
+    @discord.ui.button(label="🔧 Konfiguracija", style=discord.ButtonStyle.primary)
+    async def config(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not self._check(interaction):
+            await interaction.response.send_message("❌ Samo pokretač /setupbiz može koristiti ovo.", ephemeral=True); return
+        await interaction.response.send_modal(BIZSetupModal(self.guild_id))
+
+    @discord.ui.button(label="📅 Sati", style=discord.ButtonStyle.primary)
+    async def hours(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not self._check(interaction):
+            await interaction.response.send_message("❌ Samo pokretač /setupbiz može koristiti ovo.", ephemeral=True); return
+        await interaction.response.send_modal(BIZHoursModal())
+
+    @discord.ui.button(label="⭐ Priority rola", style=discord.ButtonStyle.secondary)
+    async def priority(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not self._check(interaction):
+            await interaction.response.send_message("❌ Samo pokretač /setupbiz može koristiti ovo.", ephemeral=True); return
+        await interaction.response.send_modal(BIZPriorityRoleModal(self.guild_id))
+
+    @discord.ui.button(label="🎙️ VC lampice", style=discord.ButtonStyle.secondary)
+    async def vc(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not self._check(interaction):
+            await interaction.response.send_message("❌ Samo pokretač /setupbiz može koristiti ovo.", ephemeral=True); return
+        await interaction.response.send_modal(BIZMonitorVCModal(self.guild_id))
+
+
+# ==========================================
+# RP & BIZ SLASH COMMANDS
+# ==========================================
+
+@bot.tree.command(name="setuprp", description="Interaktivni setup wizard za RP event (3x/dan).")
+@app_commands.default_permissions(administrator=True)
+async def setuprp(interaction: discord.Interaction):
+    ch = bot.get_channel(RP_CHANNEL_ID)
+    ch_val = ch.mention if ch else "❌ Nije postavljen"
+    pr = interaction.guild.get_role(RP_PRIORITY_ROLE_ID) if RP_PRIORITY_ROLE_ID else None
+    pr_val = pr.mention if pr else "*nije postavljen*"
+    mvc = interaction.guild.get_channel(RP_MONITOR_VC_ID) if RP_MONITOR_VC_ID else None
+    mvc_val = f"**{mvc.name}**" if mvc else "*isključeno*"
+    vc_val = f":{str(RP_VC_REMIND_MINUTE).zfill(2)}" if RP_VC_REMIND_MINUTE is not None else "*isključen*"
+    hrs_val = ", ".join(f"{h:02d}:XX" for h in sorted(RP_HOURS)) if RP_HOURS else "*nije postavljeno*"
+
+    embed = discord.Embed(title="⚙️ RP Event — Setup", color=0x3498DB,
+        description="Klikni gumbe ispod za postavljanje RP eventa.")
+    embed.add_field(name="📡 Kanal", value=ch_val, inline=True)
+    embed.add_field(name="⏰ Start/kraj", value=f":{str(RP_START_MINUTE).zfill(2)} → :{str(RP_END_MINUTE).zfill(2)}", inline=True)
+    embed.add_field(name="🎲 Izvlačenje", value=f":{str(RP_DRAW_MINUTE).zfill(2)}", inline=True)
+    embed.add_field(name="👥 Max slotova", value=str(RP_MAX_SLOTS), inline=True)
+    embed.add_field(name="📅 Sati (3x/dan)", value=hrs_val, inline=True)
+    embed.add_field(name="🎙️ VC podsjetnik", value=vc_val, inline=True)
+    embed.add_field(name="⭐ Priority rola", value=pr_val, inline=True)
+    embed.add_field(name="🎙️ VC lampice", value=mvc_val, inline=True)
+    embed.set_footer(text="Vidljivo samo tebi")
+    await interaction.response.send_message(embed=embed, view=RPSetupView(interaction.guild.id, interaction.user.id), ephemeral=True)
+
+@bot.tree.command(name="setupbiz", description="Interaktivni setup wizard za BIZ event (2x/dan).")
+@app_commands.default_permissions(administrator=True)
+async def setupbiz(interaction: discord.Interaction):
+    ch = bot.get_channel(BIZ_CHANNEL_ID)
+    ch_val = ch.mention if ch else "❌ Nije postavljen"
+    pr = interaction.guild.get_role(BIZ_PRIORITY_ROLE_ID) if BIZ_PRIORITY_ROLE_ID else None
+    pr_val = pr.mention if pr else "*nije postavljen*"
+    mvc = interaction.guild.get_channel(BIZ_MONITOR_VC_ID) if BIZ_MONITOR_VC_ID else None
+    mvc_val = f"**{mvc.name}**" if mvc else "*isključeno*"
+    vc_val = f":{str(BIZ_VC_REMIND_MINUTE).zfill(2)}" if BIZ_VC_REMIND_MINUTE is not None else "*isključen*"
+    hrs_val = ", ".join(f"{h:02d}:XX" for h in sorted(BIZ_HOURS)) if BIZ_HOURS else "*nije postavljeno*"
+
+    embed = discord.Embed(title="⚙️ BIZ Event — Setup", color=0x2ECC71,
+        description="Klikni gumbe ispod za postavljanje BIZ eventa.")
+    embed.add_field(name="📡 Kanal", value=ch_val, inline=True)
+    embed.add_field(name="⏰ Start/kraj", value=f":{str(BIZ_START_MINUTE).zfill(2)} → :{str(BIZ_END_MINUTE).zfill(2)}", inline=True)
+    embed.add_field(name="🎲 Izvlačenje", value=f":{str(BIZ_DRAW_MINUTE).zfill(2)}", inline=True)
+    embed.add_field(name="👥 Max slotova", value=str(BIZ_MAX_SLOTS), inline=True)
+    embed.add_field(name="📅 Sati (2x/dan)", value=hrs_val, inline=True)
+    embed.add_field(name="🎙️ VC podsjetnik", value=vc_val, inline=True)
+    embed.add_field(name="⭐ Priority rola", value=pr_val, inline=True)
+    embed.add_field(name="🎙️ VC lampice", value=mvc_val, inline=True)
+    embed.set_footer(text="Vidljivo samo tebi")
+    await interaction.response.send_message(embed=embed, view=BIZSetupView(interaction.guild.id, interaction.user.id), ephemeral=True)
+
+@bot.tree.command(name="force_start_rp", description="Ručno pokreće RP event odmah.")
+@app_commands.default_permissions(administrator=True)
+async def force_start_rp(interaction: discord.Interaction):
+    global rp_event_active, rp_join_button_locked, rp_current_participants, rp_current_event_message
+    if rp_event_active:
+        await interaction.response.send_message("⚠️ RP event već traje! Koristi /force_end_rp.", ephemeral=True); return
+    if RP_CHANNEL_ID == 0:
+        await interaction.response.send_message("❌ RP kanal nije postavljen. Koristi /setuprp.", ephemeral=True); return
+    rp_event_active = True
+    rp_join_button_locked = False
+    rp_current_participants = []
+    rp_participant_names.clear()
+    ch = bot.get_channel(RP_CHANNEL_ID) or interaction.channel
+    embed = build_rp_embed()
+    view = RPJoinButtonView()
+    msg = await ch.send(embed=embed, view=view)
+    rp_current_event_message = msg
+    await ch.send(f"@everyone 🎭 **RP lista je počela! Prvih {RP_MAX_SLOTS} ulaze! 🎭**")
+    await interaction.response.send_message("✅ RP event pokrenut.", ephemeral=True)
+
+    async def _auto_end_rp():
+        global rp_event_active, rp_current_participants, rp_join_button_locked, rp_last_winner_id, rp_winner_history
+        await asyncio.sleep(900)
+        if not rp_event_active: return
+        rp_join_button_locked = True
+        await update_rp_message()
+        if not rp_current_participants:
+            await ch.send("😢 Nitko nije na RP listi. Event završen.")
+        else:
+            winner_id, rp_winner_history = _draw_winner(rp_current_participants, rp_winner_history, BLACKLIST_USERS)
+            if winner_id:
+                rp_last_winner_id = winner_id
+                w = bot.get_user(winner_id)
+                await ch.send(f"🎭🎉 **RP pobjednik: {w.mention if w else f'<@{winner_id}>'}!**")
+        rp_event_active = False
+        rp_join_button_locked = False
+        rp_current_participants = []
+        rp_participant_names.clear()
+        await _disable_rp_event_message()
+    asyncio.create_task(_auto_end_rp())
+
+@bot.tree.command(name="force_end_rp", description="Zaustavlja RP event bez izvlačenja.")
+@app_commands.default_permissions(administrator=True)
+async def force_end_rp(interaction: discord.Interaction):
+    global rp_event_active, rp_current_participants, rp_join_button_locked
+    if not rp_event_active:
+        await interaction.response.send_message("❌ Nema aktivnog RP eventa.", ephemeral=True); return
+    await interaction.response.defer(ephemeral=True)
+    rp_event_active = False
+    rp_join_button_locked = False
+    rp_current_participants = []
+    rp_participant_names.clear()
+    await _disable_rp_event_message()
+    await interaction.followup.send("⏹️ RP event force-stopan.", ephemeral=True)
+
+@bot.tree.command(name="force_start_biz", description="Ručno pokreće BIZ event odmah.")
+@app_commands.default_permissions(administrator=True)
+async def force_start_biz(interaction: discord.Interaction):
+    global biz_event_active, biz_join_button_locked, biz_current_participants, biz_current_event_message
+    if biz_event_active:
+        await interaction.response.send_message("⚠️ BIZ event već traje! Koristi /force_end_biz.", ephemeral=True); return
+    if BIZ_CHANNEL_ID == 0:
+        await interaction.response.send_message("❌ BIZ kanal nije postavljen. Koristi /setupbiz.", ephemeral=True); return
+    biz_event_active = True
+    biz_join_button_locked = False
+    biz_current_participants = []
+    biz_participant_names.clear()
+    ch = bot.get_channel(BIZ_CHANNEL_ID) or interaction.channel
+    embed = build_biz_embed()
+    view = BIZJoinButtonView()
+    msg = await ch.send(embed=embed, view=view)
+    biz_current_event_message = msg
+    await ch.send(f"@everyone 💼 **BIZ lista je počela! Prvih {BIZ_MAX_SLOTS} ulaze! 💼**")
+    await interaction.response.send_message("✅ BIZ event pokrenut.", ephemeral=True)
+
+    async def _auto_end_biz():
+        global biz_event_active, biz_current_participants, biz_join_button_locked, biz_last_winner_id, biz_winner_history
+        await asyncio.sleep(900)
+        if not biz_event_active: return
+        biz_join_button_locked = True
+        await update_biz_message()
+        if not biz_current_participants:
+            await ch.send("😢 Nitko nije na BIZ listi. Event završen.")
+        else:
+            winner_id, biz_winner_history = _draw_winner(biz_current_participants, biz_winner_history, BLACKLIST_USERS)
+            if winner_id:
+                biz_last_winner_id = winner_id
+                w = bot.get_user(winner_id)
+                await ch.send(f"💼🎉 **BIZ pobjednik: {w.mention if w else f'<@{winner_id}>'}!**")
+        biz_event_active = False
+        biz_join_button_locked = False
+        biz_current_participants = []
+        biz_participant_names.clear()
+        await _disable_biz_event_message()
+    asyncio.create_task(_auto_end_biz())
+
+@bot.tree.command(name="force_end_biz", description="Zaustavlja BIZ event bez izvlačenja.")
+@app_commands.default_permissions(administrator=True)
+async def force_end_biz(interaction: discord.Interaction):
+    global biz_event_active, biz_current_participants, biz_join_button_locked
+    if not biz_event_active:
+        await interaction.response.send_message("❌ Nema aktivnog BIZ eventa.", ephemeral=True); return
+    await interaction.response.defer(ephemeral=True)
+    biz_event_active = False
+    biz_join_button_locked = False
+    biz_current_participants = []
+    biz_participant_names.clear()
+    await _disable_biz_event_message()
+    await interaction.followup.send("⏹️ BIZ event force-stopan.", ephemeral=True)
+
+@bot.tree.command(name="reroll_rp", description="Bira novog RP pobjednika — lista ostaje ista.")
+@app_commands.default_permissions(administrator=True)
+async def reroll_rp(interaction: discord.Interaction):
+    global rp_last_winner_id, rp_winner_history
+    if not rp_current_participants:
+        await interaction.response.send_message("😢 RP lista je prazna.", ephemeral=True); return
+    winner_id, rp_winner_history = _draw_winner(rp_current_participants, rp_winner_history, BLACKLIST_USERS)
+    if winner_id is None:
+        await interaction.response.send_message("⚠️ Nitko nije prihvatljiv.", ephemeral=True); return
+    rp_last_winner_id = winner_id
+    w = bot.get_user(winner_id)
+    wm = w.mention if w else f"<@{winner_id}>"
+    await interaction.response.send_message(f"✅ RP reroll — pobjednik: {wm}", ephemeral=True)
+    ch = bot.get_channel(RP_CHANNEL_ID)
+    if ch: await ch.send(f"🔁 **RP REROLL!** Novi pobjednik: {wm} 🎭🎉")
+
+@bot.tree.command(name="reroll_biz", description="Bira novog BIZ pobjednika — lista ostaje ista.")
+@app_commands.default_permissions(administrator=True)
+async def reroll_biz(interaction: discord.Interaction):
+    global biz_last_winner_id, biz_winner_history
+    if not biz_current_participants:
+        await interaction.response.send_message("😢 BIZ lista je prazna.", ephemeral=True); return
+    winner_id, biz_winner_history = _draw_winner(biz_current_participants, biz_winner_history, BLACKLIST_USERS)
+    if winner_id is None:
+        await interaction.response.send_message("⚠️ Nitko nije prihvatljiv.", ephemeral=True); return
+    biz_last_winner_id = winner_id
+    w = bot.get_user(winner_id)
+    wm = w.mention if w else f"<@{winner_id}>"
+    await interaction.response.send_message(f"✅ BIZ reroll — pobjednik: {wm}", ephemeral=True)
+    ch = bot.get_channel(BIZ_CHANNEL_ID)
+    if ch: await ch.send(f"🔁 **BIZ REROLL!** Novi pobjednik: {wm} 💼🎉")
+
+@bot.tree.command(name="winner_rp", description="Ponovo objavljuje zadnjeg RP pobjednika.")
+@app_commands.default_permissions(administrator=True)
+async def winner_rp(interaction: discord.Interaction):
+    if rp_last_winner_id is None:
+        await interaction.response.send_message("❌ Nema zabilježenog RP pobjednika.", ephemeral=True); return
+    w = bot.get_user(rp_last_winner_id)
+    wm = w.mention if w else f"<@{rp_last_winner_id}>"
+    ch = bot.get_channel(RP_CHANNEL_ID)
+    if not ch:
+        await interaction.response.send_message("❌ RP kanal nije pronađen.", ephemeral=True); return
+    await interaction.response.send_message(f"✅ Objavljeno: {wm}", ephemeral=True)
+    await ch.send(f"🏆 **Zadnji RP pobjednik:** {wm} 🎭")
+
+@bot.tree.command(name="winner_biz", description="Ponovo objavljuje zadnjeg BIZ pobjednika.")
+@app_commands.default_permissions(administrator=True)
+async def winner_biz(interaction: discord.Interaction):
+    if biz_last_winner_id is None:
+        await interaction.response.send_message("❌ Nema zabilježenog BIZ pobjednika.", ephemeral=True); return
+    w = bot.get_user(biz_last_winner_id)
+    wm = w.mention if w else f"<@{biz_last_winner_id}>"
+    ch = bot.get_channel(BIZ_CHANNEL_ID)
+    if not ch:
+        await interaction.response.send_message("❌ BIZ kanal nije pronađen.", ephemeral=True); return
+    await interaction.response.send_message(f"✅ Objavljeno: {wm}", ephemeral=True)
+    await ch.send(f"🏆 **Zadnji BIZ pobjednik:** {wm} 💼")
+
+@bot.tree.command(name="history_rp", description="Zadnjih 5 RP pobjednika.")
+@app_commands.default_permissions(administrator=True)
+async def history_rp(interaction: discord.Interaction):
+    if not rp_winner_history:
+        await interaction.response.send_message("ℹ️ Nema RP pobjednika od pokretanja bota.", ephemeral=True); return
+    embed = discord.Embed(title="🏆 RP — Zadnjih 5 pobjednika", color=0x3498DB)
+    lines = []
+    for i, entry in enumerate(reversed(rp_winner_history), 1):
+        u = bot.get_user(entry["id"])
+        name = u.display_name if u else f"ID {entry['id']}"
+        lines.append(f"`{i}.` **{name}** — {entry['time']}")
+    embed.description = "\n".join(lines)
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+@bot.tree.command(name="history_biz", description="Zadnjih 5 BIZ pobjednika.")
+@app_commands.default_permissions(administrator=True)
+async def history_biz(interaction: discord.Interaction):
+    if not biz_winner_history:
+        await interaction.response.send_message("ℹ️ Nema BIZ pobjednika od pokretanja bota.", ephemeral=True); return
+    embed = discord.Embed(title="🏆 BIZ — Zadnjih 5 pobjednika", color=0x2ECC71)
+    lines = []
+    for i, entry in enumerate(reversed(biz_winner_history), 1):
+        u = bot.get_user(entry["id"])
+        name = u.display_name if u else f"ID {entry['id']}"
+        lines.append(f"`{i}.` **{name}** — {entry['time']}")
+    embed.description = "\n".join(lines)
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+@bot.tree.command(name="add_rp", description="Dodaj korisnika na RP listu dok je event aktivan.")
+@app_commands.describe(member="Korisnik kojeg dodaješ")
+@app_commands.default_permissions(administrator=True)
+async def add_rp(interaction: discord.Interaction, member: discord.Member):
+    global rp_current_participants
+    if not rp_event_active:
+        await interaction.response.send_message("❌ Nema aktivnog RP eventa.", ephemeral=True); return
+    if rp_join_button_locked:
+        await interaction.response.send_message("🔒 Lista je zaključana.", ephemeral=True); return
+    if member.id in BAN_USERS:
+        await interaction.response.send_message(f"🚫 **{member.display_name}** je baniran/a.", ephemeral=True); return
+    if member.id in rp_current_participants:
+        await interaction.response.send_message(f"⚠️ **{member.display_name}** već je na RP listi.", ephemeral=True); return
+    guild = interaction.guild
+    m = guild.get_member(member.id) if guild else None
+    has_priority = bool(RP_PRIORITY_ROLE_ID and m and any(r.id == RP_PRIORITY_ROLE_ID for r in m.roles))
+    if len(rp_current_participants) >= RP_MAX_SLOTS:
+        if has_priority:
+            bumped = _priority_bump(guild, rp_current_participants, RP_PRIORITY_ROLE_ID, member.id)
+            if bumped is None:
+                await interaction.response.send_message("❌ Lista puna, svi imaju priority rol.", ephemeral=True); return
+            rp_current_participants.remove(bumped)
+            rp_current_participants.append(member.id)
+            rp_participant_names[member.id] = member.display_name
+            bm = guild.get_member(bumped) if guild else None
+            bn = bm.display_name if bm else f"<@{bumped}>"
+            await interaction.response.send_message(f"⭐ **{member.display_name}** dodan! **{bn}** izbačen.", ephemeral=True)
+            await update_rp_message(); return
+        else:
+            await interaction.response.send_message(f"❌ RP lista je puna ({RP_MAX_SLOTS}/{RP_MAX_SLOTS}).", ephemeral=True); return
+    rp_current_participants.append(member.id)
+    rp_participant_names[member.id] = member.display_name
+    prefix = "⭐ " if has_priority else ""
+    await interaction.response.send_message(f"✅ **{prefix}{member.display_name}** dodan na RP listu!", ephemeral=True)
+    await update_rp_message()
+
+@bot.tree.command(name="kick_rp", description="Makni korisnika s RP liste.")
+@app_commands.describe(member="Korisnik kojeg makneš")
+@app_commands.default_permissions(administrator=True)
+async def kick_rp(interaction: discord.Interaction, member: discord.Member):
+    global rp_current_participants
+    if not rp_event_active:
+        await interaction.response.send_message("❌ Nema aktivnog RP eventa.", ephemeral=True); return
+    if member.id not in rp_current_participants:
+        await interaction.response.send_message(f"⚠️ **{member.display_name}** nije na RP listi.", ephemeral=True); return
+    rp_current_participants.remove(member.id)
+    await interaction.response.send_message(f"✅ **{member.display_name}** maknut/a s RP liste.", ephemeral=True)
+    await update_rp_message()
+
+@bot.tree.command(name="add_biz", description="Dodaj korisnika na BIZ listu dok je event aktivan.")
+@app_commands.describe(member="Korisnik kojeg dodaješ")
+@app_commands.default_permissions(administrator=True)
+async def add_biz(interaction: discord.Interaction, member: discord.Member):
+    global biz_current_participants
+    if not biz_event_active:
+        await interaction.response.send_message("❌ Nema aktivnog BIZ eventa.", ephemeral=True); return
+    if biz_join_button_locked:
+        await interaction.response.send_message("🔒 Lista je zaključana.", ephemeral=True); return
+    if member.id in BAN_USERS:
+        await interaction.response.send_message(f"🚫 **{member.display_name}** je baniran/a.", ephemeral=True); return
+    if member.id in biz_current_participants:
+        await interaction.response.send_message(f"⚠️ **{member.display_name}** već je na BIZ listi.", ephemeral=True); return
+    guild = interaction.guild
+    m = guild.get_member(member.id) if guild else None
+    has_priority = bool(BIZ_PRIORITY_ROLE_ID and m and any(r.id == BIZ_PRIORITY_ROLE_ID for r in m.roles))
+    if len(biz_current_participants) >= BIZ_MAX_SLOTS:
+        if has_priority:
+            bumped = _priority_bump(guild, biz_current_participants, BIZ_PRIORITY_ROLE_ID, member.id)
+            if bumped is None:
+                await interaction.response.send_message("❌ Lista puna, svi imaju priority rol.", ephemeral=True); return
+            biz_current_participants.remove(bumped)
+            biz_current_participants.append(member.id)
+            biz_participant_names[member.id] = member.display_name
+            bm = guild.get_member(bumped) if guild else None
+            bn = bm.display_name if bm else f"<@{bumped}>"
+            await interaction.response.send_message(f"⭐ **{member.display_name}** dodan! **{bn}** izbačen.", ephemeral=True)
+            await update_biz_message(); return
+        else:
+            await interaction.response.send_message(f"❌ BIZ lista je puna ({BIZ_MAX_SLOTS}/{BIZ_MAX_SLOTS}).", ephemeral=True); return
+    biz_current_participants.append(member.id)
+    biz_participant_names[member.id] = member.display_name
+    prefix = "⭐ " if has_priority else ""
+    await interaction.response.send_message(f"✅ **{prefix}{member.display_name}** dodan na BIZ listu!", ephemeral=True)
+    await update_biz_message()
+
+@bot.tree.command(name="kick_biz", description="Makni korisnika s BIZ liste.")
+@app_commands.describe(member="Korisnik kojeg makneš")
+@app_commands.default_permissions(administrator=True)
+async def kick_biz(interaction: discord.Interaction, member: discord.Member):
+    global biz_current_participants
+    if not biz_event_active:
+        await interaction.response.send_message("❌ Nema aktivnog BIZ eventa.", ephemeral=True); return
+    if member.id not in biz_current_participants:
+        await interaction.response.send_message(f"⚠️ **{member.display_name}** nije na BIZ listi.", ephemeral=True); return
+    biz_current_participants.remove(member.id)
+    await interaction.response.send_message(f"✅ **{member.display_name}** maknut/a s BIZ liste.", ephemeral=True)
+    await update_biz_message()
+
+@bot.tree.command(name="rp_blokira_inf", description="Uključi/isključi: kad je RP lista aktivan sat, INF lista se ne pokreće.")
+@app_commands.default_permissions(administrator=True)
+async def rp_blokira_inf(interaction: discord.Interaction):
+    global RP_BLOCKS_INF
+    RP_BLOCKS_INF = not RP_BLOCKS_INF
+    save_settings()
+    if RP_BLOCKS_INF:
+        hrs = ", ".join(f"{h:02d}:XX" for h in sorted(RP_HOURS)) if RP_HOURS else "*nema postavljenih sati*"
+        await interaction.response.send_message(
+            f"✅ **RP blokira INF: UKLJUČENO**\n"
+            f"U satima kad ide RP lista ({hrs}), INF lista se **neće** pokrenuti.",
+            ephemeral=True,
+        )
+    else:
+        await interaction.response.send_message(
+            "❌ **RP blokira INF: ISKLJUČENO**\n"
+            "INF lista se pokreće svaki sat normalno, neovisno o RP eventu.",
+            ephemeral=True,
+        )
+
+@bot.tree.command(name="remind_rp", description="Ručno šalje podsjetnik za RP event.")
+@app_commands.default_permissions(administrator=True)
+async def remind_rp(interaction: discord.Interaction):
+    ch = bot.get_channel(RP_CHANNEL_ID)
+    if not ch:
+        await interaction.response.send_message("❌ RP kanal nije pronađen.", ephemeral=True); return
+    await interaction.response.send_message("✅ Podsjetnik poslan.", ephemeral=True)
+    await ch.send(f"⏳ **RP lista počinje za malo — :{str(RP_START_MINUTE).zfill(2)}! Budite spremni! 🎭**")
+
+@bot.tree.command(name="remind_biz", description="Ručno šalje podsjetnik za BIZ event.")
+@app_commands.default_permissions(administrator=True)
+async def remind_biz(interaction: discord.Interaction):
+    ch = bot.get_channel(BIZ_CHANNEL_ID)
+    if not ch:
+        await interaction.response.send_message("❌ BIZ kanal nije pronađen.", ephemeral=True); return
+    await interaction.response.send_message("✅ Podsjetnik poslan.", ephemeral=True)
+    await ch.send(f"⏳ **BIZ lista počinje za malo — :{str(BIZ_START_MINUTE).zfill(2)}! Budite spremni! 💼**")
+
+@bot.tree.command(name="vc_remind_rp", description="Odmah šalje DM svima na RP listi.")
+@app_commands.default_permissions(administrator=True)
+async def vc_remind_rp(interaction: discord.Interaction):
+    if not rp_event_active:
+        await interaction.response.send_message("❌ Nema aktivnog RP eventa.", ephemeral=True); return
+    if not rp_current_participants:
+        await interaction.response.send_message("😢 Nitko nije na RP listi.", ephemeral=True); return
+    await interaction.response.defer(ephemeral=True)
+    sent, failed = await send_rp_vc_reminders()
+    await interaction.followup.send(f"✅ RP DM poslan: **{sent}** primilo, **{failed}** nije.", ephemeral=True)
+
+@bot.tree.command(name="vc_remind_biz", description="Odmah šalje DM svima na BIZ listi.")
+@app_commands.default_permissions(administrator=True)
+async def vc_remind_biz(interaction: discord.Interaction):
+    if not biz_event_active:
+        await interaction.response.send_message("❌ Nema aktivnog BIZ eventa.", ephemeral=True); return
+    if not biz_current_participants:
+        await interaction.response.send_message("😢 Nitko nije na BIZ listi.", ephemeral=True); return
+    await interaction.response.defer(ephemeral=True)
+    sent, failed = await send_biz_vc_reminders()
+    await interaction.followup.send(f"✅ BIZ DM poslan: **{sent}** primilo, **{failed}** nije.", ephemeral=True)
+
+@bot.tree.command(name="status_rp", description="Prikazuje stanje RP eventa.")
+@app_commands.default_permissions(administrator=True)
+async def status_rp(interaction: discord.Interaction):
+    now = datetime.now(TIMEZONE)
+    hrs_val = ", ".join(f"{h:02d}:XX" for h in sorted(RP_HOURS)) if RP_HOURS else "*nije postavljeno*"
+    if not rp_event_active:
+        desc = f"**📭 RP event nije aktivan**\nZakazani sati: {hrs_val}\nKoristi `/force_start_rp` za ručni start."
+        color = 0x888888
+    else:
+        lock = "🔒 Zaključan" if rp_join_button_locked else f"🔓 Otvoren — zatvara se u :{str(RP_END_MINUTE).zfill(2)}"
+        names = "\n".join(f"{i}. {bot.get_user(uid).display_name if bot.get_user(uid) else f'<@{uid}>'}" for i, uid in enumerate(rp_current_participants, 1)) or "*Nitko*"
+        desc = f"**🎭 RP event AKTIVAN**\n**Status:** {lock}\n**Sudionici:** {len(rp_current_participants)}/{RP_MAX_SLOTS}\n\n{names}"
+        color = 0x3498DB
+    embed = discord.Embed(title="📊 RP Event Status", description=desc, color=color)
+    embed.set_footer(text=f"{now.strftime('%H:%M')} · Zakazani sati: {hrs_val}")
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+@bot.tree.command(name="status_biz", description="Prikazuje stanje BIZ eventa.")
+@app_commands.default_permissions(administrator=True)
+async def status_biz(interaction: discord.Interaction):
+    now = datetime.now(TIMEZONE)
+    hrs_val = ", ".join(f"{h:02d}:XX" for h in sorted(BIZ_HOURS)) if BIZ_HOURS else "*nije postavljeno*"
+    if not biz_event_active:
+        desc = f"**📭 BIZ event nije aktivan**\nZakazani sati: {hrs_val}\nKoristi `/force_start_biz` za ručni start."
+        color = 0x888888
+    else:
+        lock = "🔒 Zaključan" if biz_join_button_locked else f"🔓 Otvoren — zatvara se u :{str(BIZ_END_MINUTE).zfill(2)}"
+        names = "\n".join(f"{i}. {bot.get_user(uid).display_name if bot.get_user(uid) else f'<@{uid}>'}" for i, uid in enumerate(biz_current_participants, 1)) or "*Nitko*"
+        desc = f"**💼 BIZ event AKTIVAN**\n**Status:** {lock}\n**Sudionici:** {len(biz_current_participants)}/{BIZ_MAX_SLOTS}\n\n{names}"
+        color = 0x2ECC71
+    embed = discord.Embed(title="📊 BIZ Event Status", description=desc, color=color)
+    embed.set_footer(text=f"{now.strftime('%H:%M')} · Zakazani sati: {hrs_val}")
+    await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
 # ==========================================
@@ -1493,8 +3045,14 @@ async def on_ready():
         print(f"📡 CHANNEL TARGET: {CHANNEL_ID}")
         print(f"🚛 BOT AKTIVAN — sljedeći event u :{str(START_MINUTE).zfill(2)}")
     bot.add_view(JoinButtonView())
+    bot.add_view(RPJoinButtonView())
+    bot.add_view(BIZJoinButtonView())
     event_scheduler.start()
     vc_status_refresh.start()
+    rp_event_scheduler.start()
+    rp_vc_status_refresh.start()
+    biz_event_scheduler.start()
+    biz_vc_status_refresh.start()
     await bot.tree.sync()
     print("✅ Slash komande sinkronizirane.")
 
