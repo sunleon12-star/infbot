@@ -346,12 +346,18 @@ class SetupModal(discord.ui.Modal, title="⚙️ INF Bot — Konfiguracija"):
                 d = int(raw_dr)
                 if not (0 <= d <= 59):
                     errors.append("❌ Izvlačenje: minuta mora biti 0–59.")
-                elif d <= eff_start or d >= eff_end:
-                    errors.append(f"❌ Izvlačenje mora biti između :{str(eff_start).zfill(2)} i :{str(eff_end).zfill(2)}.")
-                elif event_active:
-                    errors.append("⚠️ Izvlačenje: ne možeš mijenjati dok event traje.")
                 else:
-                    new_draw = d
+                    # Cross-hour support: if end < start, event spans hour boundary
+                    if eff_end > eff_start:
+                        valid_draw = eff_start < d < eff_end
+                    else:
+                        valid_draw = d > eff_start or d < eff_end
+                    if not valid_draw:
+                        errors.append(f"❌ Izvlačenje mora biti između :{str(eff_start).zfill(2)} i :{str(eff_end).zfill(2)}.")
+                    elif event_active:
+                        errors.append("⚠️ Izvlačenje: ne možeš mijenjati dok event traje.")
+                    else:
+                        new_draw = d
             except ValueError:
                 errors.append("❌ Izvlačenje: upiši broj (npr. `35`).")
 
@@ -1407,9 +1413,16 @@ class RPSetupModal(discord.ui.Modal, title="⚙️ RP Event — Konfiguracija"):
             try:
                 d = int(raw_dr)
                 if not (0 <= d <= 59): errors.append("❌ Izvlačenje: minuta mora biti 0–59.")
-                elif d <= eff_start or d >= eff_end: errors.append(f"❌ Izvlačenje mora biti između :{str(eff_start).zfill(2)} i :{str(eff_end).zfill(2)}.")
-                elif rp_event_active: errors.append("⚠️ Ne možeš mijenjati dok event traje.")
-                else: new_draw = d
+                else:
+                    # Cross-hour support: if end < start, event spans midnight/hour boundary
+                    if eff_end > eff_start:
+                        valid_draw = eff_start < d < eff_end
+                    else:
+                        valid_draw = d > eff_start or d < eff_end
+                    if not valid_draw:
+                        errors.append(f"❌ Izvlačenje mora biti između :{str(eff_start).zfill(2)} i :{str(eff_end).zfill(2)}.")
+                    elif rp_event_active: errors.append("⚠️ Ne možeš mijenjati dok event traje.")
+                    else: new_draw = d
             except ValueError: errors.append("❌ Izvlačenje: upiši broj.")
 
         new_slots = None
@@ -1665,9 +1678,16 @@ class BIZSetupModal(discord.ui.Modal, title="⚙️ BIZ Event — Konfiguracija"
             try:
                 d = int(raw_dr)
                 if not (0 <= d <= 59): errors.append("❌ Izvlačenje: 0–59.")
-                elif d <= eff_start or d >= eff_end: errors.append(f"❌ Između :{str(eff_start).zfill(2)} i :{str(eff_end).zfill(2)}.")
-                elif biz_event_active: errors.append("⚠️ Ne možeš mijenjati dok event traje.")
-                else: new_draw = d
+                else:
+                    # Cross-hour support: if end < start, event spans hour boundary
+                    if eff_end > eff_start:
+                        valid_draw = eff_start < d < eff_end
+                    else:
+                        valid_draw = d > eff_start or d < eff_end
+                    if not valid_draw:
+                        errors.append(f"❌ Između :{str(eff_start).zfill(2)} i :{str(eff_end).zfill(2)}.")
+                    elif biz_event_active: errors.append("⚠️ Ne možeš mijenjati dok event traje.")
+                    else: new_draw = d
             except ValueError: errors.append("❌ Upiši broj.")
 
         new_slots = None
@@ -3044,6 +3064,23 @@ async def help_command(interaction: discord.Interaction):
 
 
 # ==========================================
+# MANUAL SYNC COMMAND (troubleshooting)
+# ==========================================
+@bot.command(name="sync")
+@commands.has_permissions(administrator=True)
+async def manual_sync(ctx):
+    """Ručno sinkronizira slash komande na ovaj server."""
+    await ctx.send("⏳ Sinkroniziram slash komande...")
+    try:
+        bot.tree.copy_global_to(guild=ctx.guild)
+        synced = await bot.tree.sync(guild=ctx.guild)
+        await ctx.send(f"✅ Sinkronizirano **{len(synced)}** slash komandi na ovaj server!\n"
+                       f"Komande: {', '.join(f'`/{c.name}`' for c in synced[:20])}")
+    except Exception as e:
+        await ctx.send(f"❌ Greška pri sinkronizaciji: {e}")
+
+
+# ==========================================
 # BOT EVENTS
 # ==========================================
 @bot.event
@@ -3063,17 +3100,20 @@ async def on_ready():
     rp_vc_status_refresh.start()
     biz_event_scheduler.start()
     biz_vc_status_refresh.start()
-    await bot.tree.sync()
-    # Guild sync je trenutan — kopira globalne komande na svaki server odmah
+
+    # Guild sync — trenutan, bez rate limit problema
     synced_guilds = 0
     for guild in bot.guilds:
         try:
             bot.tree.copy_global_to(guild=guild)
-            await bot.tree.sync(guild=guild)
+            synced = await bot.tree.sync(guild=guild)
             synced_guilds += 1
+            print(f"✅ Guild sync ({guild.name}): {len(synced)} komandi registrirano")
         except Exception as e:
             print(f"⚠️ Guild sync greška ({guild.name}): {e}")
-    print(f"✅ Slash komande sinkronizirane globalno + na {synced_guilds} server(a) — komande vidljive odmah.")
+    print(f"✅ Slash komande sinkronizirane na {synced_guilds} server(a) — komande vidljive odmah.")
+    if synced_guilds == 0:
+        print("⚠️ Nijedan guild nije sinkroniziran! Koristi !sync u Discord kanalu.")
 
 
 @bot.event
