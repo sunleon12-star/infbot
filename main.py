@@ -742,102 +742,104 @@ async def vc_status_refresh():
 @tasks.loop(minutes=1)
 async def event_scheduler():
     global event_active, join_button_locked, current_participants, current_event_message
+    try:
+        now = datetime.now(TIMEZONE)
+        minute = now.minute
 
-    now = datetime.now(TIMEZONE)
-    minute = now.minute
-
-    if CHANNEL_ID == 0:
-        return
-
-    # RP blokira INF: preskoči ovaj sat ako je RP_BLOCKS_INF uključen i ovaj sat je RP sat
-    if RP_BLOCKS_INF and now.hour in RP_HOURS:
-        return
-
-    # REMINDER 5 MINUTES BEFORE START
-    reminder_minute = (START_MINUTE - 5) % 60
-    if minute == reminder_minute and not event_active:
-        channel = await _get_channel(CHANNEL_ID)
-        if channel:
-            await channel.send("⏳ **INF - lista pocinje za 5 minuta.**")
-
-    # START AT CONFIGURED MINUTE
-    if minute == START_MINUTE and not event_active:
-        event_active = True
-        join_button_locked = False
-        current_participants = []
-        participant_names.clear()
-
-        channel = await _get_channel(CHANNEL_ID)
-        if not channel:
-            print(f"❌ Channel {CHANNEL_ID} not found! Check ID and bot permissions.")
-            event_active = False
+        if CHANNEL_ID == 0:
             return
 
-        embed = build_embed()
-        view = JoinButtonView()
-        msg = await channel.send(embed=embed, view=view)
-        current_event_message = msg
-        await channel.send("@everyone 🚨 INF lista je pocela! Prvih 10 ulazi, bira se ko vozi AMMO CAR! 🚛")
-        print(f"✅ Event started at {now.strftime('%H:%M')}")
+        # RP blokira INF: preskoči ovaj sat ako je RP_BLOCKS_INF uključen i ovaj sat je RP sat
+        if RP_BLOCKS_INF and now.hour in RP_HOURS:
+            return
 
-    # VC REMINDER AT CONFIGURED MINUTE
-    if VC_REMIND_MINUTE is not None and minute == VC_REMIND_MINUTE and event_active:
-        await send_vc_reminders()
+        # REMINDER 5 MINUTES BEFORE START
+        reminder_minute = (START_MINUTE - 5) % 60
+        if minute == reminder_minute and not event_active:
+            channel = await _get_channel(CHANNEL_ID)
+            if channel:
+                await channel.send("⏳ **INF - lista pocinje za 5 minuta.**")
 
-    # DRAW AT DRAW_MINUTE
-    if minute == DRAW_MINUTE and event_active:
-        channel = await _get_channel(CHANNEL_ID)
+        # START AT CONFIGURED MINUTE
+        if minute == START_MINUTE and not event_active:
+            event_active = True
+            join_button_locked = False
+            current_participants = []
+            participant_names.clear()
 
-        if not channel:
-            print(f"❌ Channel {CHANNEL_ID} not found during draw!")
-        elif len(current_participants) == 0:
-            await channel.send("😢 **Nitko nije na listi. Ajmo se aktivirat malo.**")
-        else:
-            eligible = [uid for uid in current_participants if uid not in BLACKLIST_USERS]
-            if not eligible:
-                await channel.send("⚠️ **Nitko od prijavljenih nije prihvatljiv za izvlačenje.** Svi sudionici su na blacklisti.")
+            channel = await _get_channel(CHANNEL_ID)
+            if not channel:
+                print(f"❌ INF Channel {CHANNEL_ID} not found! Check ID and bot permissions.")
+                event_active = False
+                return
+
+            embed = build_embed()
+            view = JoinButtonView()
+            msg = await channel.send(embed=embed, view=view)
+            current_event_message = msg
+            await channel.send("@everyone 🚨 INF lista je pocela! Prvih 10 ulazi, bira se ko vozi AMMO CAR! 🚛")
+            print(f"✅ INF Event started at {now.strftime('%H:%M')}")
+
+        # VC REMINDER AT CONFIGURED MINUTE
+        if VC_REMIND_MINUTE is not None and minute == VC_REMIND_MINUTE and event_active:
+            await send_vc_reminders()
+
+        # DRAW AT DRAW_MINUTE
+        if minute == DRAW_MINUTE and event_active:
+            channel = await _get_channel(CHANNEL_ID)
+
+            if not channel:
+                print(f"❌ INF Channel {CHANNEL_ID} not found during draw!")
+            elif len(current_participants) == 0:
+                await channel.send("😢 **Nitko nije na listi. Ajmo se aktivirat malo.**")
             else:
-                global last_winner_id
-                winner_id = random.choice(eligible)
-                last_winner_id = winner_id
-                winner_history.append({"id": winner_id, "time": datetime.now(TIMEZONE).strftime("%d.%m. %H:%M")})
-                if len(winner_history) > 5:
-                    winner_history.pop(0)
-                winner = bot.get_user(winner_id)
-                winner_mention = winner.mention if winner else f"<@{winner_id}>"
-                await channel.send(f"🚗💨 **Ammo car vozi {winner_mention}!** 🚗💨")
+                eligible = [uid for uid in current_participants if uid not in BLACKLIST_USERS]
+                if not eligible:
+                    await channel.send("⚠️ **Nitko od prijavljenih nije prihvatljiv za izvlačenje.** Svi sudionici su na blacklisti.")
+                else:
+                    global last_winner_id
+                    winner_id = random.choice(eligible)
+                    last_winner_id = winner_id
+                    winner_history.append({"id": winner_id, "time": datetime.now(TIMEZONE).strftime("%d.%m. %H:%M")})
+                    if len(winner_history) > 5:
+                        winner_history.pop(0)
+                    winner = bot.get_user(winner_id)
+                    winner_mention = winner.mention if winner else f"<@{winner_id}>"
+                    await channel.send(f"🚗💨 **Ammo car vozi {winner_mention}!** 🚗💨")
 
-        print(f"🎲 Draw done at {now.strftime('%H:%M')}")
+            print(f"🎲 INF Draw done at {now.strftime('%H:%M')}")
 
-    # LOCK & CLOSE EVENT AT END_MINUTE
-    if minute == END_MINUTE and event_active:
-        join_button_locked = True
-        await update_message()
+        # LOCK & CLOSE EVENT AT END_MINUTE
+        if minute == END_MINUTE and event_active:
+            join_button_locked = True
+            await update_message()
 
-        channel = await _get_channel(CHANNEL_ID)
-        if channel and current_participants:
-            guild = channel.guild if channel else None
-            name_parts = []
-            for uid in current_participants[:MAX_SLOTS]:
-                name = participant_names.get(uid)
-                if name is None:
+            channel = await _get_channel(CHANNEL_ID)
+            if channel and current_participants:
+                guild = channel.guild if channel else None
+                name_parts = []
+                for uid in current_participants[:MAX_SLOTS]:
+                    name = participant_names.get(uid)
+                    if name is None:
+                        member = guild.get_member(uid) if guild else None
+                        name = member.display_name if member else f"<@{uid}>"
                     member = guild.get_member(uid) if guild else None
-                    name = member.display_name if member else f"<@{uid}>"
-                member = guild.get_member(uid) if guild else None
-                has_priority = PRIORITY_ROLE_ID and member and any(r.id == PRIORITY_ROLE_ID for r in member.roles)
-                star = "⭐ " if has_priority else ""
-                name_parts.append(f"{star}{name}")
-            list_text = ", ".join(name_parts)
-            await channel.send(f"**Lista je:**\n{list_text}")
+                    has_priority = PRIORITY_ROLE_ID and member and any(r.id == PRIORITY_ROLE_ID for r in member.roles)
+                    star = "⭐ " if has_priority else ""
+                    name_parts.append(f"{star}{name}")
+                list_text = ", ".join(name_parts)
+                await channel.send(f"**Lista je:**\n{list_text}")
 
-        event_active = False
-        join_button_locked = False
-        current_participants = []
-        participant_names.clear()
+            event_active = False
+            join_button_locked = False
+            current_participants = []
+            participant_names.clear()
 
-        await _disable_event_message()
+            await _disable_event_message()
+            print(f"🏁 INF Event finished at {now.strftime('%H:%M')}")
 
-        print(f"🏁 Event finished at {now.strftime('%H:%M')}")
+    except Exception as e:
+        print(f"❌ event_scheduler error: {e}")
 
 
 # ==========================================
@@ -1318,48 +1320,52 @@ async def _run_biz_event(channel):
 
 @tasks.loop(minutes=1)
 async def rp_event_scheduler():
-    if RP_CHANNEL_ID == 0:
-        return
-    now = datetime.now(TIMEZONE)
-    hour, minute = now.hour, now.minute
-    channel = await _get_channel(RP_CHANNEL_ID)
-    if not channel:
-        print(f"❌ RP Channel {RP_CHANNEL_ID} not found!")
-        return
-    # Ako event već traje, nastavi ga pratiti čak i ako sat više nije u RP_HOURS
-    # (rješava evente koji prelaze u sljedeći sat, npr. 18:40 → 19:05)
-    if rp_event_active:
+    try:
+        if RP_CHANNEL_ID == 0:
+            return
+        now = datetime.now(TIMEZONE)
+        hour, minute = now.hour, now.minute
+        channel = await _get_channel(RP_CHANNEL_ID)
+        if not channel:
+            print(f"❌ RP Channel {RP_CHANNEL_ID} not found!")
+            return
+        # Ako event već traje, nastavi ga pratiti čak i ako sat više nije u RP_HOURS
+        if rp_event_active:
+            await _run_rp_event(channel)
+            return
+        if not RP_HOURS or hour not in RP_HOURS:
+            return
+        # 5-min reminder before start
+        reminder_minute = (RP_START_MINUTE - 5) % 60
+        if minute == reminder_minute:
+            await channel.send("⏳ **RP lista počinje za 5 minuta — budite spremni! 🎭**")
         await _run_rp_event(channel)
-        return
-    if not RP_HOURS or hour not in RP_HOURS:
-        return
-    # 5-min reminder before start
-    reminder_minute = (RP_START_MINUTE - 5) % 60
-    if minute == reminder_minute:
-        await channel.send("⏳ **RP lista počinje za 5 minuta — budite spremni! 🎭**")
-    await _run_rp_event(channel)
+    except Exception as e:
+        print(f"❌ rp_event_scheduler error: {e}")
 
 @tasks.loop(minutes=1)
 async def biz_event_scheduler():
-    if BIZ_CHANNEL_ID == 0:
-        return
-    now = datetime.now(TIMEZONE)
-    hour, minute = now.hour, now.minute
-    channel = await _get_channel(BIZ_CHANNEL_ID)
-    if not channel:
-        print(f"❌ BIZ Channel {BIZ_CHANNEL_ID} not found!")
-        return
-    # Ako event već traje, nastavi ga pratiti čak i ako sat više nije u BIZ_HOURS
-    # (rješava evente koji prelaze u sljedeći sat, npr. 18:40 → 19:05)
-    if biz_event_active:
+    try:
+        if BIZ_CHANNEL_ID == 0:
+            return
+        now = datetime.now(TIMEZONE)
+        hour, minute = now.hour, now.minute
+        channel = await _get_channel(BIZ_CHANNEL_ID)
+        if not channel:
+            print(f"❌ BIZ Channel {BIZ_CHANNEL_ID} not found!")
+            return
+        # Ako event već traje, nastavi ga pratiti čak i ako sat više nije u BIZ_HOURS
+        if biz_event_active:
+            await _run_biz_event(channel)
+            return
+        if not BIZ_HOURS or hour not in BIZ_HOURS:
+            return
+        reminder_minute = (BIZ_START_MINUTE - 5) % 60
+        if minute == reminder_minute:
+            await channel.send("⏳ **BIZ lista počinje za 5 minuta — budite spremni! 💼**")
         await _run_biz_event(channel)
-        return
-    if not BIZ_HOURS or hour not in BIZ_HOURS:
-        return
-    reminder_minute = (BIZ_START_MINUTE - 5) % 60
-    if minute == reminder_minute:
-        await channel.send("⏳ **BIZ lista počinje za 5 minuta — budite spremni! 💼**")
-    await _run_biz_event(channel)
+    except Exception as e:
+        print(f"❌ biz_event_scheduler error: {e}")
 
 
 # ==========================================
@@ -1951,6 +1957,7 @@ async def force_start_rp(interaction: discord.Interaction):
         await interaction.response.send_message("⚠️ RP event već traje! Koristi /force_end_rp.", ephemeral=True); return
     if RP_CHANNEL_ID == 0:
         await interaction.response.send_message("❌ RP kanal nije postavljen. Koristi /setuprp.", ephemeral=True); return
+    await interaction.response.defer(ephemeral=True)
     rp_event_active = True
     rp_join_button_locked = False
     rp_current_participants = []
@@ -1961,7 +1968,7 @@ async def force_start_rp(interaction: discord.Interaction):
     msg = await ch.send(embed=embed, view=view)
     rp_current_event_message = msg
     await ch.send(f"@everyone 🎭 **RP lista je počela! Prvih {RP_MAX_SLOTS} ulaze! 🎭**")
-    await interaction.response.send_message("✅ RP event pokrenut.", ephemeral=True)
+    await interaction.followup.send("✅ RP event pokrenut.", ephemeral=True)
 
     async def _auto_end_rp():
         global rp_event_active, rp_current_participants, rp_join_button_locked, rp_last_winner_id, rp_winner_history
@@ -2006,6 +2013,7 @@ async def force_start_biz(interaction: discord.Interaction):
         await interaction.response.send_message("⚠️ BIZ event već traje! Koristi /force_end_biz.", ephemeral=True); return
     if BIZ_CHANNEL_ID == 0:
         await interaction.response.send_message("❌ BIZ kanal nije postavljen. Koristi /setupbiz.", ephemeral=True); return
+    await interaction.response.defer(ephemeral=True)
     biz_event_active = True
     biz_join_button_locked = False
     biz_current_participants = []
@@ -2016,7 +2024,7 @@ async def force_start_biz(interaction: discord.Interaction):
     msg = await ch.send(embed=embed, view=view)
     biz_current_event_message = msg
     await ch.send(f"@everyone 💼 **BIZ lista je počela! Prvih {BIZ_MAX_SLOTS} ulaze! 💼**")
-    await interaction.response.send_message("✅ BIZ event pokrenut.", ephemeral=True)
+    await interaction.followup.send("✅ BIZ event pokrenut.", ephemeral=True)
 
     async def _auto_end_biz():
         global biz_event_active, biz_current_participants, biz_join_button_locked, biz_last_winner_id, biz_winner_history
@@ -2453,18 +2461,21 @@ async def force_start(interaction: discord.Interaction):
         await interaction.response.send_message("⚠️ Event već traje! Pričekaj kraj ili koristi /force_end.", ephemeral=True)
         return
 
+    await interaction.response.defer(ephemeral=True)
+
     event_active = True
     join_button_locked = False
     current_participants = []
     participant_names.clear()
 
+    ch = await _get_channel(CHANNEL_ID) or interaction.channel
     embed = build_embed()
     view = JoinButtonView()
-    msg = await interaction.channel.send(embed=embed, view=view)
+    msg = await ch.send(embed=embed, view=view)
     current_event_message = msg
-    await interaction.channel.send(f"@everyone 🚨 **Inf lista je pocela imate do :{str(END_MINUTE).zfill(2)} da udete i pobjednik vozi ammo!**")
+    await ch.send(f"@everyone 🚨 **Inf lista je pocela imate do :{str(END_MINUTE).zfill(2)} da udete i pobjednik vozi ammo!**")
 
-    await interaction.response.send_message("✅ Event pokrenut.", ephemeral=True)
+    await interaction.followup.send("✅ Event pokrenut.", ephemeral=True)
 
     # Background: draw after 15 minutes
     async def _auto_end():
