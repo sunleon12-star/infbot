@@ -884,10 +884,11 @@ async def remind(interaction: discord.Interaction):
 async def infon(interaction: discord.Interaction):
     global inf_bot_online
     inf_bot_online = True
+    await interaction.response.defer(ephemeral=True)
     channel = bot.get_channel(CHANNEL_ID)
     target = channel if channel else interaction.channel
     await target.send("INF bot uključen budite spremni.")
-    await interaction.response.send_message("✅ Poruka poslana.", ephemeral=True)
+    await interaction.followup.send("✅ Poruka poslana.", ephemeral=True)
 
 
 @bot.tree.command(name="infof", description="Bot piše u kanal: Nažalost izgubili smo neformalnu...")
@@ -895,15 +896,17 @@ async def infon(interaction: discord.Interaction):
 async def infof(interaction: discord.Interaction):
     global inf_bot_online
     inf_bot_online = False
+    await interaction.response.defer(ephemeral=True)
     channel = bot.get_channel(CHANNEL_ID)
     target = channel if channel else interaction.channel
     await target.send("Nažalost izgubili smo neformalnu bot neradi dok ne dobijemo neformalnu nazad")
-    await interaction.response.send_message("✅ Poruka poslana.", ephemeral=True)
+    await interaction.followup.send("✅ Poruka poslana.", ephemeral=True)
 
 
 @bot.tree.command(name="infostatus", description="Prikazuje trenutni INF bot status u kanalu.")
 @app_commands.default_permissions(administrator=True)
 async def infostatus(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
     channel = bot.get_channel(CHANNEL_ID)
     target = channel if channel else interaction.channel
     if inf_bot_online is True:
@@ -912,7 +915,7 @@ async def infostatus(interaction: discord.Interaction):
         await target.send("❌ **INF bot status:** Isključen — nema neformalne dok ne dobijemo nazad.")
     else:
         await target.send("❓ **INF bot status:** Status još nije postavljen. Koristi `/infon` ili `/infof`.")
-    await interaction.response.send_message("✅ Status objavljen.", ephemeral=True)
+    await interaction.followup.send("✅ Status objavljen.", ephemeral=True)
 
 
 @bot.tree.command(name="reroll", description="Bira novog pobjednika — lista ostaje ista.")
