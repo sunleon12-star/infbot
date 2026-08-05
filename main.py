@@ -18,10 +18,10 @@ DEFAULT_SETTINGS = {
     'CHANNEL_ID': 0,
     'MAX_SLOTS': 10,
     'START_MINUTE': 25,
-    'DRAW_MINUTE': 35,
+    'DRAW_MINUTE': 30,
     'END_MINUTE': 40,
     'PRIORITY_ROLE_ID': None,
-    'VC_REMIND_MINUTE': None,
+    'VC_REMIND_MINUTE': 38,
     'MONITOR_VC_ID': None,
 }
 
@@ -474,12 +474,12 @@ class SetupView(discord.ui.View):
             return
         if select.values[0] == "on":
             inf_bot_online = True
-            await channel.send("INF bot uključen budite spremni.")
             await interaction.response.send_message("✅ INF Bot uključen.", ephemeral=True)
+            await channel.send("INF bot uključen budite spremni.")
         else:
             inf_bot_online = False
-            await channel.send("Nažalost izgubili smo neformalnu bot neradi dok ne dobijemo neformalnu nazad")
             await interaction.response.send_message("❌ INF Bot isključen.", ephemeral=True)
+            await channel.send("Nažalost izgubili smo neformalnu bot neradi dok ne dobijemo neformalnu nazad")
 
 
 class JoinButtonView(discord.ui.View):
@@ -811,16 +811,31 @@ async def force_start(interaction: discord.Interaction):
 
     # Background: draw after 15 minutes
     async def _auto_end():
-        global event_active, current_participants
+        global event_active, current_participants, join_button_locked
         await asyncio.sleep(900)
         if not event_active:
             return
-        join_button_locked_ref = True
+        join_button_locked = True
         await update_message()
         ch = interaction.channel
+        guild = ch.guild if ch else None
         if len(current_participants) == 0:
             await ch.send("😢 No one joined. Event cancelled.")
         else:
+            # Send final list
+            name_parts = []
+            for uid in current_participants[:MAX_SLOTS]:
+                name = participant_names.get(uid)
+                if name is None:
+                    member = guild.get_member(uid) if guild else None
+                    name = member.display_name if member else f"<@{uid}>"
+                member = guild.get_member(uid) if guild else None
+                has_priority = PRIORITY_ROLE_ID and member and any(r.id == PRIORITY_ROLE_ID for r in member.roles)
+                star = "⭐ " if has_priority else ""
+                name_parts.append(f"{star}{name}")
+            await ch.send(f"**Lista je:**\n{', '.join(name_parts)}")
+
+            # Draw winner
             eligible = [uid for uid in current_participants if uid not in BLACKLIST_USERS]
             if not eligible:
                 await ch.send("⚠️ **No eligible participants** — all are on the blacklist.")
@@ -835,6 +850,7 @@ async def force_start(interaction: discord.Interaction):
                 winner_mention = winner.mention if winner else f"<@{winner_id}>"
                 await ch.send(f"🎉 **WINNER:** {winner_mention} drives the Ammo Car! 🚛")
         event_active = False
+        join_button_locked = False
         current_participants = []
         participant_names.clear()
         await _disable_event_message()
@@ -875,8 +891,8 @@ async def remind(interaction: discord.Interaction):
     if not channel:
         await interaction.response.send_message("❌ Event kanal nije pronađen.", ephemeral=True)
         return
-    await channel.send(f"⏳ **INF lista počinje za malo — :{str(START_MINUTE).zfill(2)}! Budite spremni! 🚛**")
     await interaction.response.send_message("✅ Podsjetnik poslan.", ephemeral=True)
+    await channel.send(f"⏳ **INF lista počinje za malo — :{str(START_MINUTE).zfill(2)}! Budite spremni! 🚛**")
 
 
 @bot.tree.command(name="infon", description="Bot piše u kanal: INF bot uključen budite spremni.")
@@ -938,10 +954,10 @@ async def reroll(interaction: discord.Interaction):
         winner_history.pop(0)
     winner = bot.get_user(winner_id)
     winner_mention = winner.mention if winner else f"<@{winner_id}>"
+    await interaction.response.send_message(f"✅ Reroll izvršen — pobjednik: {winner_mention}", ephemeral=True)
     channel = bot.get_channel(CHANNEL_ID)
     if channel:
         await channel.send(f"🔁 **REROLL!** Novi vozač Ammo Cara je... {winner_mention} 🎉🚗💨")
-    await interaction.response.send_message(f"✅ Reroll izvršen — pobjednik: {winner_mention}", ephemeral=True)
 
 
 @bot.tree.command(name="add", description="Dodaj korisnika na listu dok je event aktivan.")
@@ -1028,8 +1044,8 @@ async def ban_user(interaction: discord.Interaction, member: discord.Member):
     BAN_USERS.add(member.id)
     if member.id in current_participants:
         current_participants.remove(member.id)
-        await update_message()
         await interaction.response.send_message(f"🔨 **{member.display_name}** je baniran/a i maknut/a s liste.", ephemeral=True)
+        await update_message()
     else:
         await interaction.response.send_message(f"🔨 **{member.display_name}** je baniran/a — ne može ući na listu.", ephemeral=True)
 
@@ -1337,8 +1353,8 @@ async def winner_cmd(interaction: discord.Interaction):
     if not channel:
         await interaction.response.send_message("❌ Event kanal nije pronađen.", ephemeral=True)
         return
-    await channel.send(f"🏆 **Podsjetnik — zadnji pobjednik Ammo Cara:** {winner_mention} 🚗💨")
     await interaction.response.send_message(f"✅ Pobjednik ponovo objavljen: {winner_mention}", ephemeral=True)
+    await channel.send(f"🏆 **Podsjetnik — zadnji pobjednik Ammo Cara:** {winner_mention} 🚗💨")
 
 
 @bot.tree.command(name="clearwinner", description="Resetira zabilježenog pobjednika.")
