@@ -26,9 +26,9 @@ DEFAULT_SETTINGS = {
     'MONITOR_VC_ID': None,
     # RP event (3x per day)
     'RP_CHANNEL_ID': 0,
-    'RP_MAX_SLOTS': 10,
-    'RP_START_MINUTE': 25,
-    'RP_DRAW_MINUTE': 30,
+    'RP_MAX_SLOTS': 25,
+    'RP_START_MINUTE': 00,
+    'RP_DRAW_MINUTE': 25,
     'RP_END_MINUTE': 40,
     'RP_PRIORITY_ROLE_ID': None,
     'RP_VC_REMIND_MINUTE': None,
@@ -37,8 +37,8 @@ DEFAULT_SETTINGS = {
     'RP_BLOCKS_INF': False,
     # BIZ event (2x per day)
     'BIZ_CHANNEL_ID': 0,
-    'BIZ_MAX_SLOTS': 10,
-    'BIZ_START_MINUTE': 25,
+    'BIZ_MAX_SLOTS': 25,
+    'BIZ_START_MINUTE': 55,
     'BIZ_DRAW_MINUTE': 30,
     'BIZ_END_MINUTE': 40,
     'BIZ_PRIORITY_ROLE_ID': None,
