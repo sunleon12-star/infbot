@@ -581,15 +581,16 @@ class SetupView(discord.ui.View):
         if not self._check_author(interaction):
             await interaction.response.send_message("❌ Samo osoba koja je pokrenula /setup može koristiti ovu formu.", ephemeral=True)
             return
+        await interaction.response.defer(ephemeral=True)
         channel = await _get_channel(CHANNEL_ID) or interaction.channel
         if select.values[0] == "on":
             inf_bot_online = True
-            await interaction.response.send_message("✅ INF Bot uključen.", ephemeral=True)
             await channel.send("INF bot uključen budite spremni.")
+            await interaction.followup.send("✅ Poruka poslana u kanal.", ephemeral=True)
         else:
             inf_bot_online = False
-            await interaction.response.send_message("❌ INF Bot isključen.", ephemeral=True)
             await channel.send("Nažalost izgubili smo neformalnu bot neradi dok ne dobijemo neformalnu nazad")
+            await interaction.followup.send("✅ Poruka poslana u kanal.", ephemeral=True)
 
 
 class JoinButtonView(discord.ui.View):
